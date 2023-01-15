@@ -8,7 +8,7 @@ type Header struct {
 	Error         string
 }
 
-// 消息体编解码接口
+// Codec 消息体编解码接口
 type Codec interface {
 	io.Closer
 	ReadHeader(*Header) error

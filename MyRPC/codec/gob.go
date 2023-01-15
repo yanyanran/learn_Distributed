@@ -43,17 +43,17 @@ func (g GobCodec) ReadBody(body interface{}) error {
 
 func (g GobCodec) Write(header *Header, body interface{}) (err error) {
 	defer func() {
-		_ = g.buf.Flush()
+		g.buf.Flush()
 		if err != nil {
-			_ = g.Close()
+			g.Close()
 		}
 	}()
 	if err := g.enc.Encode(header); err != nil {
-		log.Println("rpc codec: gob error encoding header:", err)
+		log.Println("rpc编解码器：gob错误编码头：", err)
 		return err
 	}
 	if err := g.enc.Encode(body); err != nil {
-		log.Println("rpc codec: gob error encoding body:", err)
+		log.Println("rpc编解码器：gob错误编码体：", err)
 		return err
 	}
 	return nil
