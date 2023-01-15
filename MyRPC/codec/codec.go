@@ -24,6 +24,7 @@ const (
 	JsonType Type = "application/json" // 未实施
 )
 
+// NewCodecFuncMap K: codecType || V:消息体编解码func
 var NewCodecFuncMap map[Type]NewCodecFunc
 
 func init() {
