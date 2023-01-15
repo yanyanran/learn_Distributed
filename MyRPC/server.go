@@ -96,7 +96,9 @@ func (server *Server) serverCodec(cc codec.Codec) {
 		wait.Add(1)
 		go server.handleRequest(cc, req, send, wait) // 并发处理
 	}
-	wait.Wait()
+	wait.Wait() // 不wait的话直接close -> 等到break出当前for循环继而执行cc.Close，此时协程还在运行中，
+	// 如果此时刚好子协程在sendResponse，但此时cc已关闭
+	// 会发生runtime！整个服务器就会挂掉！
 	cc.Close()
 }
 
@@ -122,12 +124,12 @@ func (server *Server) readRequestHeader(cc codec.Codec) (*codec.Header, error) {
 func (server *Server) readRequest(cc codec.Codec) (*request, error) {
 	h, err := server.readRequestHeader(cc)
 	if err != nil {
-		return nil, err
+		return nil, err // readHeader出错没救了 需要return（客户端直接挂掉
 	}
 	req := &request{h: h}
 	// TODO: 现在我们不确定请求argv的类型，先假设是字符串
 	req.argv = reflect.New(reflect.TypeOf(""))
-	if err = cc.ReadBody(req.argv.Interface()); err != nil {
+	if err = cc.ReadBody(req.argv.Interface()); err != nil { // 如果readBody出错了 还能返回错误给客户端（客户端还存在
 		log.Println("rpc服务器：读取argv错误：", err)
 	}
 	return req, nil
