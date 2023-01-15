@@ -15,6 +15,8 @@ type GobCodec struct {
 	enc  *gob.Encoder       // gob.Decoder
 }
 
+// 设计意义：利用强制类型转换，确保 struct GobCodec实现了接口Codec
+// 这样IDE和编译期间就可以检查，而不是等到使用的时候
 var _ Codec = (*GobCodec)(nil)
 
 func NewGobCodec(conn io.ReadWriteCloser) Codec {
