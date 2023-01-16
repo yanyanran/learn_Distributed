@@ -149,7 +149,7 @@ func (server *Server) handleRequest(cc codec.Codec, req *request, send *sync.Mut
 	// TODO 应调用已注册的rpc方法以获得正确的replyv
 	// 简单的，目前--只需打印argv并发送hello消息
 	defer wait.Done()
-	log.Println(req.h, req.argv.Elem())                                      // reflect.Elem()通过反射获取指针指向的元素类型
-	req.replyv = reflect.ValueOf(fmt.Sprintf("myrpc respone %d", req.h.Seq)) /// Seq客户端请求序列号
+	log.Println(req.h, req.argv.Elem())                               // reflect.Elem()通过反射获取指针指向的元素类型
+	req.replyv = reflect.ValueOf(fmt.Sprintf("myrpc响应%d", req.h.Seq)) /// Seq客户端请求序列号
 	server.sendResponse(cc, req.h, req.replyv.Interface(), send)
 }
