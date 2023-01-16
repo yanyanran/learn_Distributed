@@ -105,7 +105,7 @@ func (server *Server) serverCodec(cc codec.Codec) {
 // request 存储call的所有信息
 type request struct {
 	h      *codec.Header
-	argv   reflect.Value // 反射值对象
+	argv   reflect.Value // 反射值对象（.interface()获取反射实例）
 	replyv reflect.Value
 }
 
@@ -120,7 +120,7 @@ func (server *Server) readRequestHeader(cc codec.Codec) (*codec.Header, error) {
 	return &h, nil
 }
 
-// readRequest 读取请求
+// readRequest 读取请求（没有请求->阻塞）
 func (server *Server) readRequest(cc codec.Codec) (*request, error) {
 	h, err := server.readRequestHeader(cc)
 	if err != nil {

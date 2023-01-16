@@ -1,14 +1,18 @@
 package client
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"log"
 	MyRPC "myrpc"
 	"myrpc/codec"
+	"net"
 	"sync"
 )
 
-// Call 一次RPC调用所需信息的封装
+// Call 一次RPC调用所需信息的封装（客户端发送到server 被拆分存在request->head+body）
 type Call struct {
 	Seq           uint64
 	ServiceMethod string
@@ -91,4 +95,96 @@ func (client *Client) terminateCalls(err error) {
 		call.Error = err
 		call.done()
 	}
+}
+
+// receive 接收响应
+func (client *Client) receive() {
+	var err error
+	for err == nil { // for一直轮询调用直到err!=nil
+		var h codec.Header
+		if err = client.cc.ReadHeader(&h); err != nil {
+			break
+		}
+		call := client.removeCall(h.Seq)
+
+		switch {
+		case call == nil: // call不存在 通常意味着写部分失败且call已被删除
+			err = client.cc.ReadBody(nil)
+		case h.Error != "": // call存在但服务端处理出错（h.Error不为空
+			call.Error = fmt.Errorf(h.Error)
+			err = client.cc.ReadBody(nil)
+			call.done()
+		default: // call存在 服务端也正常 ->从body中读取Reply值
+			err = client.cc.ReadBody(call.Reply)
+			if err != nil {
+				call.Error = errors.New("reading body " + err.Error())
+			}
+			call.done()
+		}
+	}
+	// 发生错误
+	client.terminateCalls(err)
+}
+
+func NewClient(conn net.Conn, opt *MyRPC.Option) (*Client, error) {
+	f := codec.NewCodecFuncMap[opt.CodecType] // 编解码func
+	if f == nil {
+		err := fmt.Errorf("无效的编解码器类型%s", opt.CodecType)
+		log.Println("rpc客户端：编解码器错误：", err)
+		return nil, err
+	}
+	// 发送option给server
+	if err := json.NewEncoder(conn).Encode(opt); err != nil {
+		log.Println("rpc客户端：option错误：", err)
+		conn.Close()
+		return nil, err
+	}
+	return NewClientCodec(f(conn), opt), nil // 协商好消息编解码方式后
+}
+
+func NewClientCodec(cc codec.Codec, opt *MyRPC.Option) *Client {
+	client := &Client{
+		seq:  1, // seq以1开头，0表示无效call
+		cc:   cc,
+		opt:  opt,
+		pend: make(map[uint64]*Call),
+	}
+	go client.receive() // 创建子协程接收响应
+	return client
+}
+
+// parseOptions 解析Option
+func parseOptions(opts ...*MyRPC.Option) (*MyRPC.Option, error) {
+	// 如果opts为nil或传递nil作为参数 --> 使用默认的
+	if len(opts) == 0 || opts[0] == nil {
+		return MyRPC.DefaultOption, nil
+	}
+	if len(opts) != 1 {
+		return nil, errors.New("option数大于1")
+	}
+	opt := opts[0]
+	opt.MagicNum = MyRPC.DefaultOption.MagicNum
+	if opt.CodecType == "" {
+		opt.CodecType = MyRPC.DefaultOption.CodecType
+	}
+	return opt, nil
+}
+
+// Dial 客户端创建连接
+func Dial(network, address string, opts ...*MyRPC.Option) (client *Client, err error) {
+	opt, err := parseOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+	conn, err := net.Dial(network, address) // func Dial(net, addr string) (Conn, error)创建网络连接
+	if err != nil {
+		return nil, err
+	}
+	// 如果客户端为空，则关闭连接
+	defer func() {
+		if client == nil {
+			conn.Close()
+		}
+	}()
+	return NewClient(conn, opt)
 }
