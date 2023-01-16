@@ -188,3 +188,53 @@ func Dial(network, address string, opts ...*MyRPC.Option) (client *Client, err e
 	}()
 	return NewClient(conn, opt)
 }
+
+// Send 客户端发送请求
+func (client *Client) Send(call *Call) {
+	client.send.Lock()
+	defer client.send.Unlock() // 确保client发送完整的请求
+
+	seq, err := client.registerCall(call) // 注册这个call
+	if err != nil {
+		call.Error = err
+		call.done()
+		return
+	}
+	// 准备请求head
+	client.header.ServiceMethod = call.ServiceMethod
+	client.header.Seq = seq
+	client.header.Error = ""
+
+	// 编码及发送请求
+	if err := client.cc.Write(&client.header, call.Args); err != nil {
+		call := client.removeCall(seq)
+		if call != nil { // call可能为nil（Write部分失败），客户端已收到response并处理
+			call.Error = err
+			call.done()
+		}
+	}
+}
+
+// Go 异步调用函数。返回表示调用的Call
+func (client *Client) Go(serviceMethod string, args, reply interface{}, done chan *Call) *Call {
+	if done == nil {
+		done = make(chan *Call, 10)
+	} else if cap(done) == 0 {
+		log.Panic("rpc客户端：done通道未缓冲")
+	}
+	call := &Call{
+		ServiceMethod: serviceMethod,
+		Args:          args,
+		Reply:         reply,
+		Done:          done,
+	}
+	client.Send(call)
+	return call
+}
+
+// Call 同步调用函数。阻塞call.Done，等待response到达后返回其错误状态
+func (client *Client) Call(serviceMethod string, args, reply interface{}) error {
+	// 读管道->管道为空会阻塞,直到server向管道发送response
+	call := <-client.Go(serviceMethod, args, reply, make(chan *Call, 1)).Done
+	return call.Error
+}
