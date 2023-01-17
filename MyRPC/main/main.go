@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	MyRPC "myrpc"
 	"myrpc/client"
@@ -10,7 +9,22 @@ import (
 	"time"
 )
 
+type Foo int
+
+type Args struct {
+	Num1, Num2 int
+}
+
+func (f Foo) Sum(args Args, reply *int) error {
+	*reply = args.Num1 + args.Num2
+	return nil
+}
+
 func startServer(addr chan string) {
+	var foo Foo
+	if err := MyRPC.Register(&foo); err != nil {
+		log.Fatal("register发生错误：", err)
+	}
 	lis, err := net.Listen("tcp", ":9999")
 	if err != nil {
 		log.Fatal("网络错误：", err)
@@ -60,12 +74,15 @@ func main() {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			args := fmt.Sprintf("MyRPC req %d", i)
-			var reply string
+			/*			args := fmt.Sprintf("MyRPC req %d", i)
+						var reply string*/
+			args := &Args{Num1: i, Num2: i * i}
+			var reply int
 			if err := client.Call("Foo.Sum", args, &reply); err != nil {
 				log.Fatal("调用Foo.Sum错误：", err)
 			}
-			log.Println("回复: ", reply)
+			//log.Println("回复: ", reply)
+			log.Printf("%d + %d = %d", args.Num1, args.Num2, reply)
 		}(i)
 	}
 	wg.Wait()

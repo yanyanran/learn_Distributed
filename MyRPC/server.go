@@ -169,7 +169,10 @@ func (server *Server) readRequest(cc codec.Codec) (*request, error) {
 		return nil, err // readHeader出错没救了 需要return（客户端直接挂掉
 	}
 	req := &request{h: h}
-	// TODO: 现在我们不确定请求argv的类型，先假设是字符串
+	req.svc, req.mtype, err = server.findService(h.ServiceMethod)
+	if err != nil {
+		return req, err
+	}
 	req.argv = req.mtype.newArgv() // 创建两个入参实例
 	req.replyv = req.mtype.newReplyv()
 
