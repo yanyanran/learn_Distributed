@@ -1,4 +1,4 @@
-package client
+package MyRPC
 
 import (
 	"context"
@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	MyRPC "myrpc"
 	"myrpc/codec"
 	"net"
 	"sync"
@@ -32,7 +31,7 @@ func (call *Call) done() {
 // Client 可能有多个未完成的Call与单个Client关联，且一个Client可能同时被多个 goroutines 使用
 type Client struct {
 	cc       codec.Codec
-	opt      *MyRPC.Option
+	opt      *Option
 	send     sync.Mutex
 	header   codec.Header
 	mu       sync.Mutex
@@ -128,7 +127,7 @@ func (client *Client) receive() {
 	client.terminateCalls(err)
 }
 
-func NewClient(conn net.Conn, opt *MyRPC.Option) (*Client, error) {
+func NewClient(conn net.Conn, opt *Option) (*Client, error) {
 	f := codec.NewCodecFuncMap[opt.CodecType] // 编解码func
 	if f == nil {
 		err := fmt.Errorf("无效的编解码器类型%s", opt.CodecType)
@@ -144,7 +143,7 @@ func NewClient(conn net.Conn, opt *MyRPC.Option) (*Client, error) {
 	return NewClientCodec(f(conn), opt), nil // 协商好消息编解码方式后
 }
 
-func NewClientCodec(cc codec.Codec, opt *MyRPC.Option) *Client {
+func NewClientCodec(cc codec.Codec, opt *Option) *Client {
 	client := &Client{
 		seq:  1, // seq以1开头，0表示无效call
 		cc:   cc,
@@ -156,18 +155,18 @@ func NewClientCodec(cc codec.Codec, opt *MyRPC.Option) *Client {
 }
 
 // parseOptions 解析Option
-func parseOptions(opts ...*MyRPC.Option) (*MyRPC.Option, error) {
+func parseOptions(opts ...*Option) (*Option, error) {
 	// 如果opts为nil或传递nil作为参数 --> 使用默认的
 	if len(opts) == 0 || opts[0] == nil {
-		return MyRPC.DefaultOption, nil
+		return DefaultOption, nil
 	}
 	if len(opts) != 1 {
 		return nil, errors.New("option数大于1")
 	}
 	opt := opts[0]
-	opt.MagicNum = MyRPC.DefaultOption.MagicNum
+	opt.MagicNum = DefaultOption.MagicNum
 	if opt.CodecType == "" {
-		opt.CodecType = MyRPC.DefaultOption.CodecType
+		opt.CodecType = DefaultOption.CodecType
 	}
 	return opt, nil
 }
@@ -177,10 +176,10 @@ type clientResult struct {
 	err    error
 }
 
-type newClientFunc func(conn net.Conn, opt *MyRPC.Option) (client *Client, err error)
+type newClientFunc func(conn net.Conn, opt *Option) (client *Client, err error)
 
-// dialTimeout 超时处理外壳
-func dialTimeout(f newClientFunc, network, address string, opts ...*MyRPC.Option) (client *Client, err error) {
+// DialTimeout 超时处理外壳
+func DialTimeout(f newClientFunc, network, address string, opts ...*Option) (client *Client, err error) {
 	opt, err := parseOptions(opts...)
 	if err != nil {
 		return nil, err
@@ -213,8 +212,8 @@ func dialTimeout(f newClientFunc, network, address string, opts ...*MyRPC.Option
 }
 
 // Dial 连接到指定网络地址的rpc服务器
-func Dial(network, address string, opts ...*MyRPC.Option) (*Client, error) {
-	return dialTimeout(NewClient, network, address, opts...) // 将NewClient作为入参
+func Dial(network, address string, opts ...*Option) (*Client, error) {
+	return DialTimeout(NewClient, network, address, opts...) // 将NewClient作为入参
 }
 
 /*// Dial 客户端创建连接

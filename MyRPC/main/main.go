@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	MyRPC "myrpc"
-	"myrpc/client"
 	"net"
 	"sync"
 	"time"
@@ -63,7 +62,7 @@ func main() {
 		}*/
 
 	// 使用client.Call并发5个RPC同步调用
-	client, _ := client.Dial("tcp", <-addr)
+	client, _ := MyRPC.Dial("tcp", <-addr)
 	defer func() {
 		client.Close()
 	}()
