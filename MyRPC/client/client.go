@@ -10,6 +10,7 @@ import (
 	"myrpc/codec"
 	"net"
 	"sync"
+	"time"
 )
 
 // Call 一次RPC调用所需信息的封装（客户端发送到server 被拆分存在request->head+body）
@@ -170,7 +171,52 @@ func parseOptions(opts ...*MyRPC.Option) (*MyRPC.Option, error) {
 	return opt, nil
 }
 
-// Dial 客户端创建连接
+type clientResult struct {
+	client *Client
+	err    error
+}
+
+type newClientFunc func(conn net.Conn, opt *MyRPC.Option) (client *Client, err error)
+
+// dialTimeout 超时处理外壳
+func dialTimeout(f newClientFunc, network, address string, opts ...*MyRPC.Option) (client *Client, err error) {
+	opt, err := parseOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+	conn, err := net.DialTimeout(network, address, opt.ConnectTimeout) // 如连接创建超时 返回错误
+	if err != nil {
+		return nil, err
+	}
+	// 如果客户端为空，则关闭连接
+	defer func() {
+		if err != nil {
+			conn.Close()
+		}
+	}()
+	ch := make(chan clientResult) // ch发送结果管道
+	go func() {
+		client, err := f(conn, opt) // 子协程执行NewClient
+		ch <- clientResult{client: client, err: err}
+	}()
+	if opt.ConnectTimeout == 0 {
+		result := <-ch
+		return result.client, result.err
+	}
+	select {
+	case <-time.After(opt.ConnectTimeout):
+		return nil, fmt.Errorf("rpc客户端：连接超时：应在%s内", opt.ConnectTimeout)
+	case result := <-ch:
+		return result.client, result.err
+	}
+}
+
+// Dial 连接到指定网络地址的rpc服务器
+func Dial(network, address string, opts ...*MyRPC.Option) (*Client, error) {
+	return dialTimeout(NewClient, network, address, opts...) // 将NewClient作为入参
+}
+
+/*// Dial 客户端创建连接
 func Dial(network, address string, opts ...*MyRPC.Option) (client *Client, err error) {
 	opt, err := parseOptions(opts...)
 	if err != nil {
@@ -187,7 +233,7 @@ func Dial(network, address string, opts ...*MyRPC.Option) (client *Client, err e
 		}
 	}()
 	return NewClient(conn, opt)
-}
+}*/
 
 // Send 客户端发送请求
 func (client *Client) Send(call *Call) {

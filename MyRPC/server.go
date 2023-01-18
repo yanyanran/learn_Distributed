@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"time"
 )
 
 const MagicNum = 0x3bef5c
@@ -22,13 +23,16 @@ var DefaultServer = NewServer() // *Server的默认实例
 
 // Option 客户端可选择不同的编解码器来编码消息body
 type Option struct {
-	MagicNum  int        // MagicNum 标记这是一个myRPC请求
-	CodecType codec.Type // choose
+	MagicNum       int        // MagicNum 标记这是一个myRPC请求
+	CodecType      codec.Type // choose
+	ConnectTimeout time.Duration
+	HandleTimeout  time.Duration
 }
 
 var DefaultOption = &Option{ // 默认选项
-	MagicNum:  MagicNum,
-	CodecType: codec.GobType,
+	MagicNum:       MagicNum,
+	CodecType:      codec.GobType,
+	ConnectTimeout: time.Second * 10,
 }
 
 func NewServer() *Server {
