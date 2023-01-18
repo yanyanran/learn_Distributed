@@ -79,7 +79,7 @@ func (server *Server) ServerConn(conn io.ReadWriteCloser) {
 		log.Printf("rpc服务器：无效的codec type %s\n", opt.CodecType)
 		return
 	}
-	server.serverCodec(f(conn))
+	server.serverCodec(f(conn), opt)
 }
 
 // Register 在server中发布一组方法
@@ -121,7 +121,7 @@ func (server *Server) findService(serviceMethod string) (svc *service, mtype *me
 var invalidRequest = struct{}{} // 发生错误时响应argv的占位符
 
 // serverCodec 对请求读、回复、处理
-func (server *Server) serverCodec(cc codec.Codec) {
+func (server *Server) serverCodec(cc codec.Codec, option Option) {
 	send := new(sync.Mutex) // 互斥锁 确保发送完整的响应(避免多个回复交织在一起客户端无法正确解析)
 	/* WaitGroup 对象内部有一个计数器，最初从0开始，三个方法：Add(), Done(), Wait() 用来控制计数器数量
 	   Add(n) 计数器设为n
@@ -139,7 +139,7 @@ func (server *Server) serverCodec(cc codec.Codec) {
 			continue
 		}
 		wait.Add(1)
-		go server.handleRequest(cc, req, send, wait, time.Second*10) // 并发处理
+		go server.handleRequest(cc, req, send, wait, option.HandleTimeout) // 并发处理
 	}
 	wait.Wait() // 不wait的话直接close -> 等到break出当前for循环继而执行cc.Close，此时协程还在运行中，
 	// 如果此时刚好子协程在sendResponse，但此时cc已关闭
@@ -234,7 +234,7 @@ func (server *Server) handleRequest(cc codec.Codec, req *request, send *sync.Mut
 	}
 	select {
 	case <-time.After(timeout):
-		req.h.Error = fmt.Sprintf("rpc服务器：请求handle超时：应在%s内", timeout)
+		req.h.Error = fmt.Sprintf("rpc服务器：请求handle timeout：应在%s内", timeout)
 		server.sendResponse(cc, req.h, invalidRequest, send)
 	case <-called: // 读管道
 		<-sent
