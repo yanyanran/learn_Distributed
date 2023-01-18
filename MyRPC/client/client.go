@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -278,9 +279,17 @@ func (client *Client) Go(serviceMethod string, args, reply interface{}, done cha
 	return call
 }
 
-// Call 同步调用函数。阻塞call.Done，等待response到达后返回其错误状态
-func (client *Client) Call(serviceMethod string, args, reply interface{}) error {
-	// 读管道->管道为空会阻塞,直到server向管道发送response
-	call := <-client.Go(serviceMethod, args, reply, make(chan *Call, 1)).Done
-	return call.Error
+// Call 同步调用函数。阻塞call.Done，等待response到达后返回其错误状态=>(context包实现超时处理机制
+func (client *Client) Call(ctx context.Context, serviceMethod string, args, reply interface{}) error {
+	/*	// 读管道->管道为空会阻塞,直到server向管道发送response
+		call := <-client.Go(serviceMethod, args, reply, make(chan *Call, 1)).Done
+		return call.Error*/
+	call := client.Go(serviceMethod, args, reply, make(chan *Call, 1))
+	select {
+	case <-ctx.Done(): // ctx.Done()可读取时意味着收到Context取消的信号了
+		client.removeCall(call.Seq)
+		return errors.New("rpc客户端：call调用失败：" + ctx.Err().Error())
+	case call := <-call.Done:
+		return call.Error
+	}
 }
