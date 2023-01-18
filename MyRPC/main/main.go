@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	MyRPC "myrpc"
 	"myrpc/client"
@@ -78,7 +79,8 @@ func main() {
 						var reply string*/
 			args := &Args{Num1: i, Num2: i * i}
 			var reply int
-			if err := client.Call("Foo.Sum", args, &reply); err != nil {
+			ctx, _ := context.WithTimeout(context.Background(), time.Second*10)
+			if err := client.Call(ctx, "Foo.Sum", args, &reply); err != nil {
 				log.Fatal("调用Foo.Sum错误：", err)
 			}
 			//log.Println("回复: ", reply)

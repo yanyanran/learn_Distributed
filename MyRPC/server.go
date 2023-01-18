@@ -3,6 +3,7 @@ package MyRPC
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"myrpc/codec"
@@ -138,7 +139,7 @@ func (server *Server) serverCodec(cc codec.Codec) {
 			continue
 		}
 		wait.Add(1)
-		go server.handleRequest(cc, req, send, wait) // 并发处理
+		go server.handleRequest(cc, req, send, wait, time.Second*10) // 并发处理
 	}
 	wait.Wait() // 不wait的话直接close -> 等到break出当前for循环继而执行cc.Close，此时协程还在运行中，
 	// 如果此时刚好子协程在sendResponse，但此时cc已关闭
@@ -204,18 +205,38 @@ func (server *Server) sendResponse(cc codec.Codec, h *codec.Header, body interfa
 	}
 }
 
-// handleRequest 处理请求
-func (server *Server) handleRequest(cc codec.Codec, req *request, send *sync.Mutex, wait *sync.WaitGroup) {
+// handleRequest 处理请求=>(使用time.After()结合 select+chan 完成超时处理
+func (server *Server) handleRequest(cc codec.Codec, req *request, send *sync.Mutex, wait *sync.WaitGroup, timeout time.Duration) {
 	// TODO 应调用已注册的rpc方法以获得正确的replyv
 	defer wait.Done()
 	/*	// 简单的，目前--只需打印argv并发送hello消息
 		log.Println(req.h, req.argv.Elem())                                 // reflect.Elem()通过反射获取指针指向的元素类型
 		req.replyv = reflect.ValueOf(fmt.Sprintf("myrpc响应%d", req.h.Seq)) /// Seq客户端请求序列号*/
-	err := req.svc.call(req.mtype, req.argv, req.replyv) // call完成方法调用
-	if err != nil {
-		req.h.Error = err.Error()
-		server.sendResponse(cc, req.h, invalidRequest, send)
+	called := make(chan struct{})
+	sent := make(chan struct{}) // 为了等待sendResponse完成后再退出handle
+	go func() {
+		err := req.svc.call(req.mtype, req.argv, req.replyv) // call完成方法调用
+		called <- struct{}{}
+		if err != nil {
+			req.h.Error = err.Error()
+			server.sendResponse(cc, req.h, invalidRequest, send)
+			sent <- struct{}{}
+			return
+		}
+		server.sendResponse(cc, req.h, req.replyv.Interface(), send) // 将replyv传给sendResponse完成序列化
+		sent <- struct{}{}
+	}()
+
+	if timeout == 0 {
+		<-called
+		<-sent
 		return
 	}
-	server.sendResponse(cc, req.h, req.replyv.Interface(), send) // 将replyv传给sendResponse完成序列化
+	select {
+	case <-time.After(timeout):
+		req.h.Error = fmt.Sprintf("rpc服务器：请求handle超时：应在%s内", timeout)
+		server.sendResponse(cc, req.h, invalidRequest, send)
+	case <-called: // 读管道
+		<-sent
+	}
 }
