@@ -8,6 +8,7 @@ import (
 	"log"
 	"myrpc/codec"
 	"net"
+	"net/http"
 	"reflect"
 	"strings"
 	"sync"
@@ -239,4 +240,37 @@ func (server *Server) handleRequest(cc codec.Codec, req *request, send *sync.Mut
 	case <-called: // 读管道
 		<-sent
 	}
+}
+
+const (
+	connected        = "200 Connected to MyRPC"
+	defaultRPCPath   = "/_myprc_"
+	defaultDebugPath = "/debug/myrpc"
+)
+
+// ServeHTTP 实现一个响应RPC请求的httpHandler
+func (server *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	if req.Method != "CONNECT" {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8") // 设置响应头信息
+		w.WriteHeader(http.StatusMethodNotAllowed)                  // 设置响应状态码
+		io.WriteString(w, "405 must CONNECT")
+		return
+	}
+	conn, _, err := w.(http.Hijacker).Hijack() // Hijack()将HTTP对应的TCP连接取出
+	if err != nil {
+		log.Print("rpc劫持", req.RemoteAddr, ": ", err.Error())
+		return
+	}
+	io.WriteString(conn, "HTTP/1.0"+connected+"\n\n")
+	server.ServerConn(conn)
+}
+
+// HandleHTTP 为rpcPath上的RPC消息注册HTTP处理程序
+func (server *Server) HandleHTTP() {
+	http.Handle(defaultRPCPath, server)
+}
+
+// HandleHTTP 默认服务器注册HTTP处理程序的便捷方法
+func HandleHTTP() {
+	DefaultServer.HandleHTTP()
 }
