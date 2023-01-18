@@ -1,0 +1,19 @@
+## 一次完整rpc调用的过程梳理
+
+首先客户端使用Call同步调用，Call的原理就是阻塞版Go
+
+Go主要将客户端调用信息封装为一个call结构体，然后通过Send发送请求
+
+Send将call添加到客户端的pend map中实现注册，再将此次调用封装为head和body，然后分两次发送给服务器
+
+服务器启动后一直阻塞在readRequest，接收到请求后停止阻塞。readHeader读到请求头，找到serviseMethod即远程调用的方法名（Foo.Sum），返回
+
+回到readRequest，接下来findService通过将ServiceMethod分为服务名（Foo）+方法名（Sum），再从serviceMap中通过服务名找到对应的service实例，找到的service实例中也有一个map（K：方法名，V：方法实例），然后返回给readRequest
+
+readRequest下一步是readBody，读参数。但返回的方法实例中的argv和replyv是type类型，所以需要先用newArgv和newReplyv创建其实例，再用argv实例传readBody的参。至此**服务端读取请求结束**。
+
+接下来处理请求到了handleRequest部分。启动service中的call完成方法调用，将replyv传给sendResponse完成序列化后发送给客户端。
+
+此时客户端有个receive线程一直保持接收状态。接收到reply后会把结果填到call结构体中，然后调用done方法将call写到Done管道中去
+
+现在回到客户端最开始的Call，它在发送请求后一直阻塞读Done管道等待回复，管道里一但有了call就停止阻塞读，然后返回。
