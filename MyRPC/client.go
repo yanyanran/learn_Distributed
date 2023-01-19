@@ -1,6 +1,7 @@
 package MyRPC
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -9,6 +10,8 @@ import (
 	"log"
 	"myrpc/codec"
 	"net"
+	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -178,6 +181,64 @@ type clientResult struct {
 
 type newClientFunc func(conn net.Conn, opt *Option) (client *Client, err error)
 
+// Send 客户端发送请求
+func (client *Client) Send(call *Call) {
+	client.send.Lock()
+	defer client.send.Unlock() // 确保client发送完整的请求
+
+	seq, err := client.registerCall(call) // 注册这个call
+	if err != nil {
+		call.Error = err
+		call.done()
+		return
+	}
+	// 准备请求head
+	client.header.ServiceMethod = call.ServiceMethod
+	client.header.Seq = seq
+	client.header.Error = ""
+
+	// 编码及发送请求
+	if err := client.cc.Write(&client.header, call.Args); err != nil {
+		call := client.removeCall(seq)
+		if call != nil { // call可能为nil（Write部分失败），客户端已收到response并处理
+			call.Error = err
+			call.done()
+		}
+	}
+}
+
+// Go 异步调用函数。返回表示调用的Call
+func (client *Client) Go(serviceMethod string, args, reply interface{}, done chan *Call) *Call {
+	if done == nil {
+		done = make(chan *Call, 10)
+	} else if cap(done) == 0 {
+		log.Panic("rpc客户端：done通道未缓冲")
+	}
+	call := &Call{
+		ServiceMethod: serviceMethod,
+		Args:          args,
+		Reply:         reply,
+		Done:          done,
+	}
+	client.Send(call)
+	return call
+}
+
+// Call 同步调用函数。阻塞call.Done，等待response到达后返回其错误状态=>(context包实现超时处理机制
+func (client *Client) Call(ctx context.Context, serviceMethod string, args, reply interface{}) error {
+	/*	// 读管道->管道为空会阻塞,直到server向管道发送response
+		call := <-client.Go(serviceMethod, args, reply, make(chan *Call, 1)).Done
+		return call.Error*/
+	call := client.Go(serviceMethod, args, reply, make(chan *Call, 1))
+	select {
+	case <-ctx.Done(): // ctx.Done()可读取时意味着收到Context取消的信号了
+		client.removeCall(call.Seq)
+		return errors.New("rpc客户端：call调用失败：" + ctx.Err().Error())
+	case call := <-call.Done:
+		return call.Error
+	}
+}
+
 // DialTimeout 超时处理外壳
 func DialTimeout(f newClientFunc, network, address string, opts ...*Option) (client *Client, err error) {
 	opt, err := parseOptions(opts...)
@@ -235,60 +296,37 @@ func Dial(network, address string, opts ...*MyRPC.Option) (client *Client, err e
 	return NewClient(conn, opt)
 }*/
 
-// Send 客户端发送请求
-func (client *Client) Send(call *Call) {
-	client.send.Lock()
-	defer client.send.Unlock() // 确保client发送完整的请求
-
-	seq, err := client.registerCall(call) // 注册这个call
-	if err != nil {
-		call.Error = err
-		call.done()
-		return
+// NewHTTPClient 通过HTTP作为传输协议new客户端实例
+func NewHTTPClient(conn net.Conn, opt *Option) (*Client, error) {
+	io.WriteString(conn, fmt.Sprintf("CONNECT %s HTTP/1.0\n\n", defaultRPCPath))
+	// 在切换到 RPC 协议之前需要成功的 HTTP 响应
+	resp, err := http.ReadResponse(bufio.NewReader(conn), &http.Request{Method: "CONNECT"})
+	if err == nil && resp.Status == connected { // CONNECT请求建立成功=> NewClient完成接下来的通信
+		return NewClient(conn, opt)
 	}
-	// 准备请求head
-	client.header.ServiceMethod = call.ServiceMethod
-	client.header.Seq = seq
-	client.header.Error = ""
-
-	// 编码及发送请求
-	if err := client.cc.Write(&client.header, call.Args); err != nil {
-		call := client.removeCall(seq)
-		if call != nil { // call可能为nil（Write部分失败），客户端已收到response并处理
-			call.Error = err
-			call.done()
-		}
+	if err == nil {
+		err = errors.New("意外的HTTP响应：" + resp.Status)
 	}
+	return nil, err
 }
 
-// Go 异步调用函数。返回表示调用的Call
-func (client *Client) Go(serviceMethod string, args, reply interface{}, done chan *Call) *Call {
-	if done == nil {
-		done = make(chan *Call, 10)
-	} else if cap(done) == 0 {
-		log.Panic("rpc客户端：done通道未缓冲")
-	}
-	call := &Call{
-		ServiceMethod: serviceMethod,
-		Args:          args,
-		Reply:         reply,
-		Done:          done,
-	}
-	client.Send(call)
-	return call
+// DialHTTP 连接到指定网络地址的HTTP rpc服务器，监听默认的HTTP rpc路径
+func DialHTTP(network, address string, opts ...*Option) (*Client, error) {
+	return DialTimeout(NewHTTPClient, network, address, opts...)
 }
 
-// Call 同步调用函数。阻塞call.Done，等待response到达后返回其错误状态=>(context包实现超时处理机制
-func (client *Client) Call(ctx context.Context, serviceMethod string, args, reply interface{}) error {
-	/*	// 读管道->管道为空会阻塞,直到server向管道发送response
-		call := <-client.Go(serviceMethod, args, reply, make(chan *Call, 1)).Done
-		return call.Error*/
-	call := client.Go(serviceMethod, args, reply, make(chan *Call, 1))
-	select {
-	case <-ctx.Done(): // ctx.Done()可读取时意味着收到Context取消的信号了
-		client.removeCall(call.Seq)
-		return errors.New("rpc客户端：call调用失败：" + ctx.Err().Error())
-	case call := <-call.Done:
-		return call.Error
+// XDial 根据rpcAddr连接到一个服务器
+// rpcAddr是通用格式（协议protocol@addr）表示一个rpc server =>(eg, http@10.0.0.1:7001, tcp@10.0.0.1:9999, unix@/tmp/myrpc.sock
+func XDial(rpcAddr string, opts ...*Option) (*Client, error) {
+	parts := strings.Split(rpcAddr, "@") // 切割return1数组
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("rpc客户端错误：格式“%s”错误，应为protocol@addr", rpcAddr)
+	}
+	protocol, addr := parts[0], parts[1]
+	switch protocol {
+	case "http":
+		return DialHTTP("tcp", addr, opts...)
+	default: // tcp、unix或其他传输协议
+		return Dial(protocol, addr, opts...)
 	}
 }
