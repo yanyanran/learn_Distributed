@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	MyRPC "myrpc"
 	"myrpc/xclient"
@@ -40,7 +41,10 @@ func startServer(addr chan string) {
 		log.Println("start rpcServer on", lis.Addr()) // Addr返回监听器lis的网络地址
 		addr <- lis.Addr().String()                   // string形式的地址
 		MyRPC.Accept(lis)                             // run server*/
-	lis, _ := net.Listen("tcp", ":0")
+	lis, err := net.Listen("tcp", ":0") // 不能是固定端口
+	if err != nil {
+		fmt.Println(err)
+	}
 	server := MyRPC.NewServer()
 	server.Register(&foo)
 	//MyRPC.HandleHTTP()
