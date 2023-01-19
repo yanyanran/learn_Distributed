@@ -37,7 +37,7 @@ func NewMultiServerDiscovery(servers []string) *MultiServersDiscovery {
 		ran:     rand.New(rand.NewSource(time.Now().UnixNano())),
 		servers: servers,
 	}
-	d.index = d.ran.Intn(math.MinInt32 - 1)
+	d.index = d.ran.Intn(math.MaxInt32 - 1)
 	return d
 }
 
@@ -57,15 +57,16 @@ func (d *MultiServersDiscovery) Update(servers []string) error {
 func (d *MultiServersDiscovery) Get(mode SelectMode) (string, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	if len(d.servers) == 0 {
+	n := len(d.servers)
+	if n == 0 {
 		return "", errors.New("rpc discovery: 没有可用的服务器")
 	}
 	switch mode {
 	case RandomSelect:
-		return d.servers[d.ran.Intn(len(d.servers))], nil
+		return d.servers[d.ran.Intn(n)], nil
 	case RoundRobinSelect:
-		s := d.servers[d.index%len(d.servers)] // 服务器可更新，因此模式len(d.servers)可以确保安全
-		d.index = (d.index + 1) % len(d.servers)
+		s := d.servers[d.index%n] // 服务器可更新，因此模式len(d.servers)可以确保安全
+		d.index = (d.index + 1) % n
 		return s, nil
 	default:
 		return "", errors.New("rpc discovery: 不支持的Select模式")
@@ -73,8 +74,8 @@ func (d *MultiServersDiscovery) Get(mode SelectMode) (string, error) {
 }
 
 func (d *MultiServersDiscovery) GetAll() ([]string, error) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
+	d.mu.RLock()
+	defer d.mu.RUnlock()
 	servers := make([]string, len(d.servers), len(d.servers)) // 返回d.server的副本
 	copy(servers, d.servers)
 	return servers, nil

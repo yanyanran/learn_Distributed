@@ -96,7 +96,7 @@ func (X *XClient) Broadcast(ctx context.Context, serverMethod string, args, repl
 				clonedReply = reflect.New(reflect.ValueOf(reply).Elem().Type()).Interface()
 			}
 			err := X.call(rpcAddr, ctx, serverMethod, args, clonedReply)
-			mu.Lock()
+			mu.Lock() // 加锁 防止多个协程同时写e
 			if err != nil && e == nil {
 				e = err
 				cancel() // 如果任何一个call失败，就取消未完成的call
