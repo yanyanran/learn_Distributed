@@ -244,7 +244,7 @@ func (server *Server) handleRequest(cc codec.Codec, req *request, send *sync.Mut
 
 const (
 	connected        = "200 Connected to MyRPC"
-	defaultRPCPath   = "/_myprc_"
+	defaultRPCPath   = "/_myrpc_"
 	defaultDebugPath = "/debug/myrpc"
 )
 
@@ -261,13 +261,16 @@ func (server *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		log.Print("rpc劫持", req.RemoteAddr, ": ", err.Error())
 		return
 	}
-	io.WriteString(conn, "HTTP/1.0"+connected+"\n\n")
+	io.WriteString(conn, "HTTP/1.0 "+connected+"\n\n")
 	server.ServerConn(conn)
 }
 
 // HandleHTTP 为rpcPath上的RPC消息注册HTTP处理程序
 func (server *Server) HandleHTTP() {
 	http.Handle(defaultRPCPath, server)
+	// debugHTTP实例绑定到地址/debug/myrpc
+	http.Handle(defaultDebugPath, debugHTTP{server})
+	log.Println("rpc服务器调试路径:", defaultDebugPath)
 }
 
 // HandleHTTP 默认服务器注册HTTP处理程序的便捷方法

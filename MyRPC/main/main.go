@@ -5,6 +5,7 @@ import (
 	"log"
 	MyRPC "myrpc"
 	"net"
+	"net/http"
 	"sync"
 	"time"
 )
@@ -22,19 +23,48 @@ func (f Foo) Sum(args Args, reply *int) error {
 
 func startServer(addr chan string) {
 	var foo Foo
-	if err := MyRPC.Register(&foo); err != nil {
-		log.Fatal("register发生错误：", err)
-	}
-	lis, err := net.Listen("tcp", ":9999")
-	if err != nil {
-		log.Fatal("网络错误：", err)
-	}
-	log.Println("start rpcServer on", lis.Addr()) // Addr返回监听器lis的网络地址
-	addr <- lis.Addr().String()                   // string形式的地址
-	MyRPC.Accept(lis)                             // run server
+	/*	if err := MyRPC.Register(&foo); err != nil {
+			log.Fatal("register发生错误：", err)
+		}
+		lis, err := net.Listen("tcp", ":9999")
+		if err != nil {
+			log.Fatal("网络错误：", err)
+		}
+		log.Println("start rpcServer on", lis.Addr()) // Addr返回监听器lis的网络地址
+		addr <- lis.Addr().String()                   // string形式的地址
+		MyRPC.Accept(lis)                             // run server*/
+	lis, _ := net.Listen("tcp", ":9999")
+	MyRPC.Register(&foo)
+	MyRPC.HandleHTTP()
+	addr <- lis.Addr().String()
+	http.Serve(lis, nil)
 }
 
-func main() {
+func call(addrCh chan string) {
+	client, _ := MyRPC.DialHTTP("tcp", <-addrCh)
+	defer func() {
+		client.Close()
+	}()
+
+	time.Sleep(time.Second)
+	// 发送请求和接收响应
+	var wg sync.WaitGroup
+	for i := 0; i < 5; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			args := &Args{Num1: i, Num2: i * i}
+			var reply int
+			if err := client.Call(context.Background(), "Foo.Sum", args, &reply); err != nil {
+				log.Fatal("call Foo.Sum error:", err)
+			}
+			log.Printf("%d + %d = %d", args.Num1, args.Num2, reply)
+		}(i)
+	}
+	wg.Wait()
+}
+
+func mainOld() {
 	log.SetFlags(0)
 	addr := make(chan string) // 信道确保server端口监听成功 client再发起请求
 	go startServer(addr)
@@ -87,4 +117,11 @@ func main() {
 		}(i)
 	}
 	wg.Wait()
+}
+
+func main() {
+	log.SetFlags(0)
+	ch := make(chan string)
+	go call(ch)
+	startServer(ch)
 }
