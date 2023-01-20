@@ -105,6 +105,7 @@ func Heartbeat(registry, addr string, duration time.Duration) {
 		for err == nil {
 			<-t.C
 			err = sendHeartbeat(registry, addr)
+			t.Stop()
 		}
 	}()
 }
