@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 	MyRPC "myrpc"
+	"myrpc/registry"
 	"myrpc/xclient"
 	"net"
+	"net/http"
 	"sync"
 	"time"
 )
@@ -29,7 +31,24 @@ func (f Foo) Sleep(args Args, reply *int) error {
 	return nil
 }
 
-func startServer(addr chan string) {
+func startRegistry(wg *sync.WaitGroup) {
+	lis, _ := net.Listen("tcp", ":9999")
+	registry.HandleHTTP()
+	wg.Done()
+	http.Serve(lis, nil)
+}
+
+func startServer(registryAddr string, wg *sync.WaitGroup) {
+	var foo Foo
+	l, _ := net.Listen("tcp", ":0")
+	server := MyRPC.NewServer()
+	server.Register(&foo)
+	registry.Heartbeat(registryAddr, "tcp@"+l.Addr().String(), 0)
+	wg.Done()
+	server.Accept(l)
+}
+
+func startServerOld(addr chan string) {
 	var foo Foo
 	/*	if err := MyRPC.Register(&foo); err != nil {
 			log.Fatal("register发生错误：", err)
@@ -104,12 +123,65 @@ func broadcast(addr1, addr2 string) {
 	wg.Wait()
 }
 
+func callNew(registry string) {
+	d := xclient.NewMyRegistryDiscovery(registry, 0)
+	xc := xclient.NewXClient(d, xclient.RandomSelect, nil)
+	defer func() { _ = xc.Close() }()
+	// 发送请求和接收响应
+	var wg sync.WaitGroup
+	for i := 0; i < 5; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			foo(xc, context.Background(), "call", "Foo.Sum", &Args{Num1: i, Num2: i * i})
+		}(i)
+	}
+	wg.Wait()
+}
+
+func broadcastNew(registry string) {
+	d := xclient.NewMyRegistryDiscovery(registry, 0)
+	xc := xclient.NewXClient(d, xclient.RandomSelect, nil)
+	defer func() { _ = xc.Close() }()
+	var wg sync.WaitGroup
+	for i := 0; i < 5; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			foo(xc, context.Background(), "broadcast", "Foo.Sum", &Args{Num1: i, Num2: i * i})
+			// 预期2-5超时
+			ctx, _ := context.WithTimeout(context.Background(), time.Second*2)
+			foo(xc, ctx, "broadcast", "Foo.Sleep", &Args{Num1: i, Num2: i * i})
+		}(i)
+	}
+	wg.Wait()
+}
+
 func main() {
+	log.SetFlags(0)
+	registryAddr := "http://localhost:9999/_myrpc_/registry"
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go startRegistry(&wg)
+	wg.Wait()
+
+	time.Sleep(time.Second)
+	wg.Add(2)
+	go startServer(registryAddr, &wg)
+	go startServer(registryAddr, &wg)
+	wg.Wait()
+
+	time.Sleep(time.Second)
+	callNew(registryAddr)
+	broadcastNew(registryAddr)
+}
+
+func mainOldII() {
 	log.SetFlags(0)
 	ch1 := make(chan string)
 	ch2 := make(chan string)
-	go startServer(ch1) // 启动两台服务器
-	go startServer(ch2)
+	go startServerOld(ch1) // 启动两台服务器
+	go startServerOld(ch2)
 	addr1 := <-ch1
 	addr2 := <-ch2
 	time.Sleep(time.Second)
@@ -144,7 +216,7 @@ func callOld(addrCh chan string) {
 func mainOld() {
 	log.SetFlags(0)
 	addr := make(chan string) // 信道确保server端口监听成功 client再发起请求
-	go startServer(addr)
+	go startServerOld(addr)
 
 	// 一个简单的MyRPC客户端
 	/*	conn, _ := net.Dial("tcp", <-addr) // Dial(网络协议名，IP地址/域名)创建网络连接
@@ -200,5 +272,5 @@ func mainHTTP() {
 	log.SetFlags(0)
 	ch := make(chan string)
 	//go call(ch)
-	startServer(ch)
+	startServerOld(ch)
 }
