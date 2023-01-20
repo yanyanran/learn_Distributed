@@ -5,8 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="f8ffeff0-64da-4458-aa56-d41dba264acb" name="变更" comment="">
-      <change afterPath="$PROJECT_DIR$/GeeRPC/codec/codec.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/一篇记录.md" beforeDir="false" afterPath="$PROJECT_DIR$/一篇记录.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -28,12 +27,16 @@
     <option name="stateVersion" value="1" />
   </component>
   <component name="ProjectId" id="2JSVxTbYPn2B2PKi0ThNzNJ4T27" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    "ASKED_ADD_EXTERNAL_FILES": "true",
     "DefaultGoTemplateProperty": "Go File",
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
@@ -44,9 +47,99 @@
     "WebServerToolWindowFactoryState": "false",
     "go.import.settings.migrated": "true",
     "go.sdk.automatically.set": "true",
-    "last_opened_file_path": "/home/yanran/github/Distributed_learning/GeeRPC"
+    "last_opened_file_path": "/home/yanran",
+    "settings.editor.selected.configurable": "preferences.pluginManager"
   }
 }]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/MyRPC/client" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/MyRPC" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Go 构建.go build main.go">
+    <configuration default="true" type="GoApplicationRunConfiguration" factoryName="Go Application">
+      <module name="Distributed_learning" />
+      <working_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <package value="GeeRPC" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="go build main.go" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
+      <module name="Distributed_learning" />
+      <working_directory value="$PROJECT_DIR$/MyRPC" />
+      <kind value="FILE" />
+      <package value="GeeRPC" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$/MyRPC/main/main.go" />
+      <method v="2" />
+    </configuration>
+    <configuration name="go build myrpc/main" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
+      <module name="Distributed_learning" />
+      <working_directory value="$PROJECT_DIR$/MyRPC" />
+      <kind value="PACKAGE" />
+      <package value="myrpc/main" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$/MyRPC/main/main.go" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="GoTestRunConfiguration" factoryName="Go Test">
+      <module name="Distributed_learning" />
+      <working_directory value="$PROJECT_DIR$" />
+      <kind value="DIRECTORY" />
+      <package value="GeeRPC" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <framework value="gotest" />
+      <method v="2" />
+    </configuration>
+    <configuration name="myrpc 中的 TestClient_Call" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="Distributed_learning" />
+      <working_directory value="$PROJECT_DIR$/MyRPC" />
+      <kind value="PACKAGE" />
+      <package value="myrpc" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <framework value="gotest" />
+      <pattern value="^\QTestClient_Call\E$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="myrpc 中的 TestClient_Call/server_handle_timeout" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="Distributed_learning" />
+      <working_directory value="$PROJECT_DIR$/MyRPC" />
+      <kind value="PACKAGE" />
+      <package value="myrpc" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <framework value="gotest" />
+      <pattern value="^\QTestClient_Call\E$/^\Qserver_handle_timeout\E$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="myrpc 中的 TestXDial" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="Distributed_learning" />
+      <working_directory value="$PROJECT_DIR$/MyRPC" />
+      <kind value="PACKAGE" />
+      <package value="myrpc" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <framework value="gotest" />
+      <pattern value="^\QTestXDial\E$" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Go 构建.go build main.go" />
+        <item itemvalue="Go 构建.go build myrpc/main" />
+        <item itemvalue="Go 测试.myrpc 中的 TestXDial" />
+        <item itemvalue="Go 测试.myrpc 中的 TestClient_Call/server_handle_timeout" />
+        <item itemvalue="Go 测试.myrpc 中的 TestClient_Call" />
+      </list>
+    </recent_temporary>
+  </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="应用程序级" UseSingleDictionary="true" transferred="true" />
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
@@ -61,6 +154,9 @@
         </entry>
       </map>
     </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
   </component>
   <component name="VgoProject">
     <settings-migrated>true</settings-migrated>
