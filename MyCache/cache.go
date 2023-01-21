@@ -1,7 +1,7 @@
 package MyCache
 
 import (
-	"MyRPC/MyCache/lru"
+	"MyCache/lru"
 	"sync"
 )
 
