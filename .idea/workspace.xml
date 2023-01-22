@@ -5,9 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="f8ffeff0-64da-4458-aa56-d41dba264acb" name="变更" comment="">
-      <change afterPath="$PROJECT_DIR$/MyCache/consistenthash/consistenthash.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/MyCache/consistenthash/consistenthash_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/MyCache/peers.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/MyCache/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/MyCache/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/MyCache/http.go" beforeDir="false" afterPath="$PROJECT_DIR$/MyCache/http.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
