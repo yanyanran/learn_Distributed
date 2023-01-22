@@ -5,10 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="f8ffeff0-64da-4458-aa56-d41dba264acb" name="变更" comment="">
-      <change afterPath="$PROJECT_DIR$/MyCache/peers.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/MyCache/main/server" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/MyCache/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/MyCache/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/MyCache/http.go" beforeDir="false" afterPath="$PROJECT_DIR$/MyCache/http.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/MyCache/mycache.go" beforeDir="false" afterPath="$PROJECT_DIR$/MyCache/mycache.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/MyCache/run.sh" beforeDir="false" afterPath="$PROJECT_DIR$/MyCache/main/run.sh" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -63,10 +63,11 @@
       <recent name="$PROJECT_DIR$/MyRPC/client" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/MyCache/main" />
       <recent name="$PROJECT_DIR$/MyRPC" />
     </key>
   </component>
-  <component name="RunManager" selected="Go 构建.go build main.go">
+  <component name="RunManager" selected="Go 构建.go build MyCache/main">
     <configuration default="true" type="GoApplicationRunConfiguration" factoryName="Go Application">
       <module name="Distributed_learning" />
       <working_directory value="$PROJECT_DIR$" />
@@ -74,6 +75,15 @@
       <package value="GeeRPC" />
       <directory value="$PROJECT_DIR$" />
       <filePath value="$PROJECT_DIR$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="go build MyCache/main" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
+      <module name="Distributed_learning" />
+      <working_directory value="$PROJECT_DIR$/MyCache" />
+      <kind value="PACKAGE" />
+      <package value="MyCache/main" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$/MyCache/main/main.go" />
       <method v="2" />
     </configuration>
     <configuration name="go build main.go" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
@@ -104,17 +114,6 @@
       <framework value="gotest" />
       <method v="2" />
     </configuration>
-    <configuration name="myrpc 中的 TestClient_Call" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
-      <module name="Distributed_learning" />
-      <working_directory value="$PROJECT_DIR$/MyRPC" />
-      <kind value="PACKAGE" />
-      <package value="myrpc" />
-      <directory value="$PROJECT_DIR$" />
-      <filePath value="$PROJECT_DIR$" />
-      <framework value="gotest" />
-      <pattern value="^\QTestClient_Call\E$" />
-      <method v="2" />
-    </configuration>
     <configuration name="myrpc 中的 TestClient_Call/server_handle_timeout" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="Distributed_learning" />
       <working_directory value="$PROJECT_DIR$/MyRPC" />
@@ -139,11 +138,11 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Go 构建.go build MyCache/main" />
         <item itemvalue="Go 构建.go build main.go" />
         <item itemvalue="Go 构建.go build myrpc/main" />
         <item itemvalue="Go 测试.myrpc 中的 TestXDial" />
         <item itemvalue="Go 测试.myrpc 中的 TestClient_Call/server_handle_timeout" />
-        <item itemvalue="Go 测试.myrpc 中的 TestClient_Call" />
       </list>
     </recent_temporary>
   </component>

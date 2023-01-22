@@ -64,7 +64,7 @@ func (g *Group) Get(key string) (ByteView, error) {
 		log.Println("[MyCache] hit")
 		return v, nil
 	}
-	defer fmt.Printf("%s's cache does not exist and new cache is now created", key)
+	//defer fmt.Printf("%s's cache does not exist and new cache is now created", key)
 	return g.load(key) // 流程⑶ 缓存不存在
 }
 
