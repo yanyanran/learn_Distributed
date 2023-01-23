@@ -5,10 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="f8ffeff0-64da-4458-aa56-d41dba264acb" name="变更" comment="">
-      <change afterPath="$PROJECT_DIR$/MyCache/main/server" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/MyCache/singleflight/singleflight.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/MyCache/main/server" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/MyCache/mycache.go" beforeDir="false" afterPath="$PROJECT_DIR$/MyCache/mycache.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/MyCache/run.sh" beforeDir="false" afterPath="$PROJECT_DIR$/MyCache/main/run.sh" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

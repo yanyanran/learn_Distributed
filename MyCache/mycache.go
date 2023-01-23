@@ -1,6 +1,7 @@
 package MyCache
 
 import (
+	"MyCache/singleflight"
 	"fmt"
 	"log"
 	"sync"
@@ -26,6 +27,7 @@ type Group struct {
 	getter    Getter // 缓存未hit时获取源数据的回调
 	mainCache cache  // 一开始实现的并发缓存
 	peers     PeerPicker
+	loader    *singleflight.Group // 确保每个key只被获取一次
 }
 
 var (
@@ -43,6 +45,7 @@ func NewGroup(name string, cacheBytes int64, getter Getter) *Group {
 		name:      name,
 		getter:    getter,
 		mainCache: cache{cacheBytes: cacheBytes},
+		loader:    &singleflight.Group{},
 	}
 	groups[name] = g
 	return g
@@ -78,15 +81,21 @@ func (g *Group) RegisterPeers(peers PeerPicker) {
 
 // 设计预留:分布式场景下，load会先从远程节点获取getFromPeer，失败了再回退到getLocally
 func (g *Group) load(key string) (value ByteView, err error) {
-	if g.peers != nil {
-		if peer, ok := g.peers.PickPeer(key); ok {
-			if value, err := g.getFromPeer(peer, key); err == nil {
-				return value, nil
+	viewi, err := g.loader.Do(key, func() (interface{}, error) {
+		if g.peers != nil {
+			if peer, ok := g.peers.PickPeer(key); ok {
+				if value, err := g.getFromPeer(peer, key); err == nil {
+					return value, nil
+				}
+				log.Println("[MyCache] 无法从peer获取", err)
 			}
-			log.Println("[MyCache] 无法从peer获取", err)
 		}
+		return g.getLocally(key)
+	})
+	if err == nil {
+		return viewi.(ByteView), nil
 	}
-	return g.getLocally(key)
+	return
 }
 
 // getFromPeer 访问远程peer获取缓存值
