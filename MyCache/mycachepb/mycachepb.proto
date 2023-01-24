@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+// /_mycache/<group>/<keyName> 所需参数
+message Request {
+  string group = 1;
+  string key = 2;  // cache
+}
+
+message Response {
+  bytes value = 1;
+}
+
+service GroupCache {
+  rpc Get(Request) returns (Response);
+}

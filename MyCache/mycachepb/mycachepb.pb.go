@@ -6,6 +6,7 @@ package mycachepb
 import (
 	fmt "fmt"
 	proto "github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	math "math"
 )
 

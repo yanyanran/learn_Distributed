@@ -2,7 +2,9 @@ package MyCache
 
 import (
 	"MyCache/consistenthash"
+	pb "MyCache/mycachepb"
 	"fmt"
+	"google.golang.org/protobuf/proto"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -64,8 +66,14 @@ func (p *HTTPPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	// 将value作为proto消息写入响应body
+	body, err := proto.Marshal(&pb.Response{Value: view.ByteSlice()}) // 编码HTTP响应
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Write(view.ByteSlice()) // 将缓存值作为httpResponse的body返回
+	w.Write(body) // 将缓存值作为httpResponse的body返回
 }
 
 // HTTP客户端
@@ -76,27 +84,30 @@ type httpGetter struct {
 var _ PeerGetter = (*httpGetter)(nil)
 
 // Get 实现PeerGetter接口=> 取返回值并转为[]bytes型
-func (h *httpGetter) Get(group string, key string) ([]byte, error) {
+func (h *httpGetter) Get(in *pb.Request, out *pb.Response) error {
 	res, err := http.Get(fmt.Sprintf(
 		"%v%v/%v",
 		h.baseURL,
-		url.QueryEscape(group), // 转义字符串以便安全放在URL路径段中
-		url.QueryEscape(key),
+		url.QueryEscape(in.GetGroup()), // 转义字符串以便安全放在URL路径段中
+		url.QueryEscape(in.GetKey()),
 	))
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("服务器返回: %v", res.Status)
+		return fmt.Errorf("服务器返回: %v", res.Status)
 	}
 
 	bytes, err := ioutil.ReadAll(res.Body) // 从io.Reader中读数据直到结尾
 	if err != nil {
-		return nil, fmt.Errorf("读取响应body: %v", err)
+		return fmt.Errorf("读取响应body: %v", err)
 	}
-	return bytes, nil
+	if err = proto.Unmarshal(bytes, out); err != nil { // 解码HTTP响应
+		return fmt.Errorf("解码响应body: %v", err)
+	}
+	return nil
 }
 
 // Set 更新连接池peer列表
