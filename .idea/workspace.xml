@@ -5,11 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="f8ffeff0-64da-4458-aa56-d41dba264acb" name="变更" comment="">
-      <change afterPath="$PROJECT_DIR$/MyCache/go.sum" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/MyCache/mycachepb/mycachepb.proto" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/MyCache/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/MyCache/go.mod" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/MyCache/main/run.sh" beforeDir="false" afterPath="$PROJECT_DIR$/MyCache/main/run.sh" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -55,7 +51,7 @@
     "WebServerToolWindowFactoryState": "false",
     "go.import.settings.migrated": "true",
     "go.sdk.automatically.set": "true",
-    "last_opened_file_path": "/home/yanran/Downloads/protobuf/protoc-gen-go",
+    "last_opened_file_path": "/home/yanran/github/MIT-6.824",
     "settings.editor.selected.configurable": "preferences.lookFeel"
   }
 }]]></component>
@@ -68,7 +64,7 @@
       <recent name="$PROJECT_DIR$/MyRPC" />
     </key>
   </component>
-  <component name="RunManager" selected="Go 构建.go build main.go">
+  <component name="RunManager" selected="Go 构建.go build MyCache/main">
     <configuration default="true" type="GoApplicationRunConfiguration" factoryName="Go Application">
       <module name="Distributed_learning" />
       <working_directory value="$PROJECT_DIR$" />
@@ -139,8 +135,8 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Go 构建.go build main.go" />
         <item itemvalue="Go 构建.go build MyCache/main" />
+        <item itemvalue="Go 构建.go build main.go" />
         <item itemvalue="Go 构建.go build myrpc/main" />
         <item itemvalue="Go 测试.myrpc 中的 TestXDial" />
         <item itemvalue="Go 测试.myrpc 中的 TestClient_Call/server_handle_timeout" />
