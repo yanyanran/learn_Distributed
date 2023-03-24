@@ -137,3 +137,19 @@ W3C标准规范了http标头和值格式，对**如何在服务之间发送和�
 > ```
 >
 > 最后会看到 `tracestate` 保留了 Rojo 的条目，除了被推到右边之外，最左边的位置让下一个服务器知道哪个跟踪系统对应于 `traceparent` 。
+
+------
+
+
+
+研究下了dubbo java的实现源码，发现在observability对tracing板块实现支持B3和W3C的具体代码在dubbo-spring-boot-observability目录下：
+
+```java
+// dubbo-spring-boot/dubbo-spring-boot-observability-starter/src/main/java/org/apache/dubbo/spring/boot/observability/config/DubboTracingProperties.java
+```
+
+`DubboTracingProperties`类中定义了：采样Sampling、Baggage和传播propagation等一些dubbo-tracing的追踪属性，后会在`OpenTelemetryAutoConfiguration`和`BraveAutoConfiguration`类中调用
+
+类的框架整理如下：
+
+![](https://github.com/yanyanran/pictures/blob/main/DubboTracingProperties.png?raw=true)
