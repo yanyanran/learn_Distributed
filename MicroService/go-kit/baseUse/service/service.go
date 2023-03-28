@@ -7,5 +7,13 @@ type Service interface {
 }
 
 type baseServer struct {
+	// 结构体实现Service接口
 }
 
+func NewService() Service {
+	return &baseServer{}
+}
+
+func (s baseServer) TestAdd(ctx context.Context, in Add) AddAck {
+	return AddAck{Res: in.A + in.B}
+}
