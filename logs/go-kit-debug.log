@@ -1,0 +1,5 @@
+{"L":"DEBUG","T":"2023-03-28 18:59:39","C":"transport/transport.go:27","M":"给请求添加uuid","UUID":"86d16bf7-0b4f-5d45-9731-45e035671cc8"}
+{"L":"DEBUG","T":"2023-03-28 18:59:39","C":"transport/transport.go:54","M":"86d16bf7-0b4f-5d45-9731-45e035671cc8"," 开始解析请求数据":{"a":1,"b":2}}
+{"L":"DEBUG","T":"2023-03-28 18:59:39","C":"service/middleware.go:32","M":"86d16bf7-0b4f-5d45-9731-45e035671cc8","调用 service logMiddlewareServer":"TestAdd","req":{"a":1,"b":2},"res":{"res":3}}
+{"L":"DEBUG","T":"2023-03-28 18:59:39","C":"end_point/middleware.go:16","M":"86d16bf7-0b4f-5d45-9731-45e035671cc8","调用 v2_endpoint LoggingMiddleware":"处理完请求","耗时毫秒":0}
+{"L":"DEBUG","T":"2023-03-28 18:59:39","C":"transport/transport.go:63","M":"86d16bf7-0b4f-5d45-9731-45e035671cc8","请求结束封装返回值":{"res":3}}
