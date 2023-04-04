@@ -37,7 +37,7 @@ func (c *Client) Read(data []byte) (int, error) {
 // 给client写消息之前先往连接中写入消息体长度（固定4字节）-> client读取就能先读取长度再按长度读信息
 func (c *Client) Write(data []byte) (int, error) {
 	var err error
-	err = binary.Write(c.conn, binary.BigEndian, int32(len(data))) // ？binary.BigEndian
+	err = binary.Write(c.conn, binary.BigEndian, int32(len(data))) // binary.BigEndian
 	if err != nil {
 		return 0, err
 	}
