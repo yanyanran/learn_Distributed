@@ -2,6 +2,7 @@ package message
 
 import (
 	"MQ/util"
+	"errors"
 	"log"
 )
 
@@ -21,6 +22,10 @@ type Channel struct {
 	incomingMessageChan chan *Message // 接收Provider(服务器消息
 	clientMessageChan   chan *Message // 消息发送到这 然后consumer(客户端收取
 	exitChan            chan util.ChanReq
+
+	inFlightMessageChan chan *Message       // 发消息同时也往这个管道里写
+	inFlightMessages    map[string]*Message // 存储已发送消息
+	finishMessageChan   chan util.ChanReq   // 完成确认管道
 
 	clients []Consumer // 数组维护Client
 }
@@ -53,6 +58,29 @@ func (c *Channel) PullMessage() *Message {
 	return <-c.clientMessageChan
 }
 
+func (c *Channel) FinishMessage(uuidStr string) error { // ?手动
+	errChan := make(chan interface{})
+	c.finishMessageChan <- util.ChanReq{
+		Variable: uuidStr,
+		RetChan:  errChan,
+	}
+	err, _ := (<-errChan).(error)
+	return err
+}
+
+func (c *Channel) pushInFlightMessage(msg *Message) {
+	c.inFlightMessages[util.UuidToStr(msg.Uuid())] = msg
+}
+
+func (c *Channel) popInFlightMessage(uuidStr string) (*Message, error) {
+	msg, ok := c.inFlightMessages[uuidStr]
+	if !ok {
+		return nil, errors.New("UUID not in flight")
+	}
+	delete(c.inFlightMessages, uuidStr)
+	return msg, nil
+}
+
 func (c *Channel) Close() error {
 	errChan := make(chan interface{})
 	c.exitChan <- util.ChanReq{
@@ -70,6 +98,7 @@ func (c *Channel) Router() {
 		closeChan = make(chan struct{})
 	)
 
+	go c.RequeueRouter(closeChan)
 	go c.MessagePump(closeChan) // 传入closeChan防止僵尸进程出现
 
 	for {
@@ -126,6 +155,29 @@ func (c *Channel) MessagePump(closeChan chan struct{}) {
 		case <-closeChan:
 			return
 		}
+		if msg != nil {
+			c.incomingMessageChan <- msg
+		}
 		c.clientMessageChan <- msg
+	}
+}
+
+func (c *Channel) RequeueRouter(closeChan chan struct{}) {
+	for {
+		select {
+		case msg := <-c.inFlightMessageChan:
+			c.pushInFlightMessage(msg)
+
+		case finishReq := <-c.finishMessageChan:
+			uuidStr := finishReq.Variable.(string)
+			_, err := c.popInFlightMessage(uuidStr)
+			if err != nil {
+				log.Printf("ERROR: failed to finish message(%s) - %s", uuidStr, err.Error())
+			}
+			finishReq.RetChan <- err
+
+		case <-closeChan:
+			return
+		}
 	}
 }
