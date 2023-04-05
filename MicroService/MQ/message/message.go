@@ -1,7 +1,8 @@
 package message
 
 type Message struct {
-	data []byte
+	data      []byte
+	timerChan chan struct{}
 }
 
 func NewMessage(data []byte) *Message {
@@ -20,4 +21,11 @@ func (m *Message) Body() []byte {
 
 func (m *Message) Data() []byte {
 	return m.data
+}
+
+func (m *Message) EndTimer() {
+	select {
+	case m.timerChan <- struct{}{}: // 触发RequeueRouter中的msg.timerChan导致return
+	default:
+	}
 }

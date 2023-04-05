@@ -4,6 +4,7 @@ import (
 	"MQ/util"
 	"errors"
 	"log"
+	"time"
 )
 
 // consumer从channel读信息-> channel需要维护consumerMessage + 增删consumer
@@ -26,6 +27,7 @@ type Channel struct {
 	inFlightMessageChan chan *Message       // 发消息同时也往这个管道里写
 	inFlightMessages    map[string]*Message // 存储已发送消息
 	finishMessageChan   chan util.ChanReq   // 完成确认管道
+	requeueMessageChan  chan util.ChanReq   // 重入队列
 
 	clients []Consumer // 数组维护Client
 }
@@ -58,7 +60,7 @@ func (c *Channel) PullMessage() *Message {
 	return <-c.clientMessageChan
 }
 
-func (c *Channel) FinishMessage(uuidStr string) error { // ?手动
+func (c *Channel) FinishMessage(uuidStr string) error { // 由provider确认
 	errChan := make(chan interface{})
 	c.finishMessageChan <- util.ChanReq{
 		Variable: uuidStr,
@@ -78,7 +80,19 @@ func (c *Channel) popInFlightMessage(uuidStr string) (*Message, error) {
 		return nil, errors.New("UUID not in flight")
 	}
 	delete(c.inFlightMessages, uuidStr)
+	msg.EndTimer()
 	return msg, nil
+}
+
+// RequeueMessage consusmer想多次消费同一条消息
+func (c *Channel) RequeueMessage(uuiStr string) error {
+	errChan := make(chan interface{})
+	c.requeueMessageChan <- util.ChanReq{
+		Variable: uuiStr,
+		RetChan:  errChan,
+	}
+	err, _ := (<-errChan).(error)
+	return err
 }
 
 func (c *Channel) Close() error {
@@ -156,7 +170,7 @@ func (c *Channel) MessagePump(closeChan chan struct{}) {
 			return
 		}
 		if msg != nil {
-			c.incomingMessageChan <- msg
+			c.inFlightMessageChan <- msg
 		}
 		c.clientMessageChan <- msg
 	}
@@ -165,9 +179,37 @@ func (c *Channel) MessagePump(closeChan chan struct{}) {
 func (c *Channel) RequeueRouter(closeChan chan struct{}) {
 	for {
 		select {
+		// 消息入【已发送】队列中（超时未接收/已完成）
 		case msg := <-c.inFlightMessageChan:
+			// 防止provider长时间不确认消息发送完成，消息堆积在inFightMessages
+			go func(msg *Message) {
+				select {
+				case <-time.After(60 * time.Second):
+					log.Printf("CHANNEL(%s): auto requeue of message(%s)", c.name, util.UuidToStr(msg.Uuid()))
+				case <-msg.timerChan:
+					return
+				}
+				err := c.RequeueMessage(util.UuidToStr(msg.Uuid()))
+				if err != nil {
+					log.Printf("ERROR: channel(%s) - %s", c.name, err.Error())
+				}
+			}(msg)
 			c.pushInFlightMessage(msg)
 
+		// 重新入队
+		case requeueReq := <-c.requeueMessageChan:
+			uuidStr := requeueReq.Variable.(string)
+			msg, err := c.popInFlightMessage(uuidStr)
+			if err != nil {
+				log.Printf("ERROR: failed to requeue message(%s) - %s", uuidStr, err.Error())
+			} else {
+				go func(msg *Message) {
+					c.PutMessage(msg)
+				}(msg)
+			}
+			requeueReq.RetChan <- err
+
+		// 消息已完成
 		case finishReq := <-c.finishMessageChan:
 			uuidStr := finishReq.Variable.(string)
 			_, err := c.popInFlightMessage(uuidStr)
