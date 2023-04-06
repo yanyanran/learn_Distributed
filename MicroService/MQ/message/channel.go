@@ -32,6 +32,25 @@ type Channel struct {
 	clients []Consumer // 数组维护Client
 }
 
+func NewChannel(name string, inMemSize int) *Channel {
+	channel := &Channel{
+		name:                name,
+		addClientChan:       make(chan util.ChanReq),
+		removeClientChan:    make(chan util.ChanReq),
+		clients:             make([]Consumer, 0, 5),
+		incomingMessageChan: make(chan *Message, 5),
+		msgChan:             make(chan *Message, inMemSize),
+		clientMessageChan:   make(chan *Message),
+		exitChan:            make(chan util.ChanReq),
+		inFlightMessageChan: make(chan *Message),
+		inFlightMessages:    make(map[string]*Message),
+		requeueMessageChan:  make(chan util.ChanReq),
+		finishMessageChan:   make(chan util.ChanReq),
+	}
+	go channel.Router()
+	return channel
+}
+
 func (c *Channel) AddClient(client Consumer) {
 	log.Printf("Channel(%s): adding client...", c.name)
 	doneChan := make(chan interface{})
@@ -84,7 +103,7 @@ func (c *Channel) popInFlightMessage(uuidStr string) (*Message, error) {
 	return msg, nil
 }
 
-// RequeueMessage consusmer想多次消费同一条消息
+// RequeueMessage consumer想多次消费同一条消息
 func (c *Channel) RequeueMessage(uuiStr string) error {
 	errChan := make(chan interface{})
 	c.requeueMessageChan <- util.ChanReq{

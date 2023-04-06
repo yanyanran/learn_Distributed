@@ -18,7 +18,7 @@ func TestUuidToStr(t *testing.T) {
 
 	fmt.Println(uid)
 	fmt.Printf("%s ", uid)
-	fmt.Printf(uid.UuidToStr())
+	//fmt.Printf(uid.UuidToStr())
 	fmt.Println("11111111111111111111")
 
 	a := "ABCD"

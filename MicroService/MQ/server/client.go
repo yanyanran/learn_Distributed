@@ -1,6 +1,7 @@
 package server
 
 import (
+	"MQ/protocol"
 	"encoding/binary"
 	"io"
 	"log"
@@ -52,4 +53,15 @@ func (c *Client) Write(data []byte) (int, error) {
 func (c *Client) Close() {
 	log.Printf("CLIENT(%s): closing", c.String())
 	c.conn.Close()
+}
+
+// Handle 从客户端读取数据，保持状态并做出响应
+func (c *Client) Handle() {
+	defer c.Close()
+	proto := &protocol.Protocol{}
+	err := proto.IOLoop(c)
+	if err != nil {
+		log.Printf("ERROR: client(%s) - %s", c.String(), err.Error())
+		return
+	}
 }
