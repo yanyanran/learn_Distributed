@@ -11,7 +11,7 @@ const (
 )
 
 type StatefulReadWriter interface {
-	io.ReadWriter
+	io.ReadWriter // Reader&&Writer
 	GetState() int
 	SetState(state int)
 	String() string

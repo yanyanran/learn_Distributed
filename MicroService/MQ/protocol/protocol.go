@@ -39,7 +39,7 @@ func (p *Protocol) IOLoop(client StatefulReadWriter) error {
 		log.Printf("PROTOCOL: %#v", params)
 
 		resp, err = p.Execute(client, params...)
-		if err != nil { // ？？？
+		if err != nil {
 			_, err = client.Write([]byte(err.Error()))
 			if err != nil {
 				break
@@ -74,7 +74,7 @@ func (p *Protocol) Execute(client StatefulReadWriter, params ...string) ([]byte,
 
 	if method, ok := typ.MethodByName(cmd); ok {
 		args[2] = reflect.ValueOf(params)
-		returnValues := method.Func.Call(args)
+		returnValues := method.Func.Call(args) // 传value启动Call
 
 		if !returnValues[0].IsNil() {
 			resp = returnValues[0].Interface().([]byte)

@@ -125,11 +125,11 @@ func (t *Topic) Router(inMemSize int) {
 				channel = NewChannel(channelName, inMemSize)
 				t.channelMap[channelName] = channel
 				log.Printf("TOPIC(%s): new channel(%s)", t.name, channel.name)
-				channelReq.RetChan <- channel
-				if !t.channelWriteStarted {
-					go t.MessagePump(closeChan) // topic消息推送到channel协程
-					t.channelWriteStarted = true
-				}
+			}
+			channelReq.RetChan <- channel
+			if !t.channelWriteStarted {
+				go t.MessagePump(closeChan) // topic消息推送到channel协程
+				t.channelWriteStarted = true
 			}
 
 		case msg = <-t.incomingMessageChan:
