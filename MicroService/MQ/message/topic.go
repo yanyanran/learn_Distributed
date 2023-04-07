@@ -1,7 +1,9 @@
 package message
 
 import (
+	"MQ/queue"
 	"MQ/util"
+	"context"
 	"log"
 )
 
@@ -17,6 +19,7 @@ type Topic struct {
 	routerSyncChan      chan struct{}
 	exitChan            chan util.ChanReq // 是否已向channel发送消息
 	channelWriteStarted bool              //是否已经向channel发送消息
+	backend             queue.Queue       // 添加磁盘队列【持久化处理】
 }
 
 var ( // 全局
@@ -34,6 +37,7 @@ func NewTopic(name string, inMemSize int) *Topic {
 		readSyncChan:        make(chan struct{}),
 		routerSyncChan:      make(chan struct{}),
 		exitChan:            make(chan util.ChanReq),
+		backend:             queue.NewDiskQueue(name),
 	}
 	go topic.Router(inMemSize) // 并发topic的事件处理
 	return topic
@@ -48,7 +52,7 @@ func GetTopic(name string) *Topic {
 	return (<-topicChan).(*Topic) // return后停止阻塞
 }
 
-func TopicFactory(inMemSize int) {
+func TopicFactory(ctx context.Context, inMemSize int) {
 	var (
 		topicReq util.ChanReq
 		name     string
@@ -56,14 +60,19 @@ func TopicFactory(inMemSize int) {
 		ok       bool
 	)
 	for { // 选择用工厂封装
-		topicReq = <-newTopicChan
-		name = topicReq.Variable.(string)
-		if topic, ok = TopicMap[name]; !ok {
-			topic = NewTopic(name, inMemSize)
-			TopicMap[name] = topic
-			log.Printf("TOPIC %s CREATED", name)
+		select {
+		case <-ctx.Done(): // 退出
+			return
+		default:
+			topicReq = <-newTopicChan
+			name = topicReq.Variable.(string)
+			if topic, ok = TopicMap[name]; !ok {
+				topic = NewTopic(name, inMemSize)
+				TopicMap[name] = topic
+				log.Printf("TOPIC %s CREATED", name)
+			}
+			topicReq.RetChan <- topic // return
 		}
-		topicReq.RetChan <- topic // return
 	}
 }
 
@@ -86,6 +95,13 @@ func (t *Topic) MessagePump(closeChan <-chan struct{}) {
 	for {
 		select {
 		case msg = <-t.msgChan:
+		case <-t.backend.ReadReadyChan():
+			bytes, err := t.backend.Get()
+			if err != nil {
+				log.Printf("ERROR: t.backend.Get() - %s", err.Error())
+				continue
+			}
+			msg = NewMessage(bytes)
 		case <-closeChan:
 			return
 		}
@@ -136,8 +152,13 @@ func (t *Topic) Router(inMemSize int) {
 			select {
 			case t.msgChan <- msg:
 				log.Printf("TOPIC(%s) wrote message", t.name)
-			default: // msgChan满了丢弃
+			default:
 				// TODO：持久化磁盘功能
+				err := t.backend.Put(msg.data)
+				if err != nil {
+					log.Printf("ERROR: t.backend.Put() - %s", err.Error())
+				}
+				log.Printf("TOPIC(%s): wrote to backend", t.name)
 			}
 		case <-t.readSyncChan:
 			<-t.routerSyncChan
