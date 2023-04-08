@@ -4,6 +4,8 @@ import (
 	"MQ/message"
 	"MQ/util"
 	"bufio"
+	"bytes"
+	"context"
 	"log"
 	"reflect"
 	"strings"
@@ -17,7 +19,7 @@ type Protocol struct {
 	channel *message.Channel
 }
 
-func (p *Protocol) IOLoop(client StatefulReadWriter) error {
+func (p *Protocol) IOLoop(ctx context.Context, client StatefulReadWriter) error {
 	var (
 		err  error
 		line string
@@ -26,6 +28,12 @@ func (p *Protocol) IOLoop(client StatefulReadWriter) error {
 	client.SetState(ClientInit)
 	reader := bufio.NewReader(client)
 	for { // 循环从client逐行获取
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+		}
+
 		line, err = reader.ReadString('\n')
 		if err != nil {
 			break
@@ -175,4 +183,32 @@ func (p *Protocol) REQ(client StatefulReadWriter, params []string) ([]byte, erro
 
 	return nil, nil
 
+}
+
+// PUB 服务端写入消息，与topic交互
+func (p *Protocol) PUB(client StatefulReadWriter, params []string) ([]byte, error) {
+	var buf bytes.Buffer
+	var err error
+
+	if client.GetState() != -1 { // 假客户端无法访问ClientInit 初始化为-1
+		return nil, ClientErrInvalid
+	}
+	if len(params) < 3 {
+		return nil, ClientErrInvalid
+	}
+
+	topicName := params[1]
+	body := []byte(params[2])
+	_, err = buf.Write(<-util.UuidChan)
+	if err != nil {
+		return nil, err
+	}
+	_, err = buf.Write(body)
+	if err != nil {
+		return nil, err
+	}
+
+	topic := message.GetTopic(topicName)
+	topic.PutMessage(message.NewMessage(buf.Bytes()))
+	return []byte("OK"), nil
 }

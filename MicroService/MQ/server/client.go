@@ -2,6 +2,7 @@ package server
 
 import (
 	"MQ/protocol"
+	"context"
 	"encoding/binary"
 	"io"
 	"log"
@@ -56,10 +57,10 @@ func (c *Client) Close() {
 }
 
 // Handle 从客户端读取数据，保持状态并做出响应
-func (c *Client) Handle() {
+func (c *Client) Handle(ctx context.Context) {
 	defer c.Close()
 	proto := &protocol.Protocol{}
-	err := proto.IOLoop(c)
+	err := proto.IOLoop(ctx, c)
 	if err != nil {
 		log.Printf("ERROR: client(%s) - %s", c.String(), err.Error())
 		return
