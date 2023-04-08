@@ -1,6 +1,7 @@
 package message
 
 import (
+	"MQ/queue"
 	"MQ/util"
 	"errors"
 	"io"
@@ -35,6 +36,7 @@ type Channel struct {
 	requeueMessageChan  chan util.ChanReq   // 重入队列
 
 	clients []Consumer // 数组维护Client
+	backend queue.Queue
 }
 
 func NewChannel(name string, inMemSize int) *Channel {
@@ -51,6 +53,7 @@ func NewChannel(name string, inMemSize int) *Channel {
 		inFlightMessages:    make(map[string]*Message),
 		requeueMessageChan:  make(chan util.ChanReq),
 		finishMessageChan:   make(chan util.ChanReq),
+		backend:             queue.NewDiskQueue(name),
 	}
 	go channel.Router()
 	return channel
@@ -169,11 +172,18 @@ func (c *Channel) Router() {
 			case c.msgChan <- msg:
 				log.Printf("CHANNEL(%s) wrote message", c.name)
 			default: // 防止因 msgChan 缓冲填满时造成阻塞，加上一个 default 分支直接丢弃消息
+				// TODO
+				err := c.backend.Put(msg.data)
+				if err != nil {
+					log.Printf("ERROR: t.backend.Put() - %s", err.Error())
+				}
+				log.Printf("TOPIC(%s): wrote to backend", c.name)
 			}
 		case closeReq := <-c.exitChan:
 			log.Printf("CHANNEL(%s) is closing", c.name)
 			close(closeChan)
 
+			c.backend.Close()
 			for _, consumer := range c.clients {
 				consumer.Close()
 			}
@@ -190,6 +200,14 @@ func (c *Channel) MessagePump(closeChan chan struct{}) {
 	for {
 		select {
 		case msg = <-c.msgChan:
+		case c.backend.ReadReadyChan() <- struct{}{}:
+			get, err := c.backend.Get()
+			if err != nil {
+				log.Printf("ERROR: t.backend.Get() - %s", err.Error())
+				continue
+			}
+			msg := NewMessage(get)
+			c.PutMessage(msg)
 		case <-closeChan:
 			return
 		}

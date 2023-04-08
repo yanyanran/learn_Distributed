@@ -172,6 +172,7 @@ func (t *Topic) Router(inMemSize int) {
 				}
 			}
 
+			t.backend.Close()
 			close(closeChan)
 			closeReq.RetChan <- nil
 		}
