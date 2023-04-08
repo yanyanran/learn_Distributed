@@ -120,7 +120,7 @@ func (p *Protocol) SUB(client StatefulReadWriter, params []string) ([]byte, erro
 
 	topic := message.GetTopic(topicName)
 	p.channel = topic.GetChannel(channelName)
-
+	p.channel.AddClient(client)
 	return nil, nil
 }
 

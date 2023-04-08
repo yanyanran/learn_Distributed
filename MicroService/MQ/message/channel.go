@@ -3,6 +3,7 @@ package message
 import (
 	"MQ/util"
 	"errors"
+	"io"
 	"log"
 	"time"
 )
@@ -10,6 +11,10 @@ import (
 // consumer从channel读信息-> channel需要维护consumerMessage + 增删consumer
 
 type Consumer interface {
+	io.ReadWriter // Reader&&Writer
+	GetState() int
+	SetState(state int)
+	String() string
 	Close()
 }
 
