@@ -170,7 +170,7 @@ func (c *Channel) Router() {
 		case msg := <-c.incomingMessageChan:
 			select {
 			case c.msgChan <- msg:
-				log.Printf("CHANNEL(%s) wrote message", c.name)
+				log.Printf("CHANNEL(%s) wrote message - %s", c.name, msg.Body())
 			default: // 防止因 msgChan 缓冲填满时造成阻塞，加上一个 default 分支直接丢弃消息
 				// TODO
 				err := c.backend.Put(msg.data)

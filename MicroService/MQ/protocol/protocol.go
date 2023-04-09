@@ -48,10 +48,11 @@ func (p *Protocol) IOLoop(ctx context.Context, client StatefulReadWriter) error 
 
 		resp, err = p.Execute(client, params...)
 		if err != nil {
-			_, err = client.Write([]byte(err.Error()))
-			if err != nil {
-				break
-			}
+			/*			_, err = client.Write([]byte(err.Error()))
+						if err != nil {
+							break
+						}*/
+			log.Println("IOLOOP ERROR: ", err.Error())
 			continue
 		}
 
