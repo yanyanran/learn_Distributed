@@ -81,6 +81,7 @@ func (p *Protocol) Execute(client StatefulReadWriter, params ...string) ([]byte,
 	cmd := strings.ToUpper(params[0])
 
 	if method, ok := typ.MethodByName(cmd); ok {
+		log.Printf(cmd)
 		args[2] = reflect.ValueOf(params)
 		returnValues := method.Func.Call(args) // 传value启动Call
 
@@ -156,6 +157,7 @@ func (p *Protocol) FIN(client StatefulReadWriter, params []string) ([]byte, erro
 	uuidStr := params[1]
 	err := p.channel.FinishMessage(uuidStr)
 	if err != nil {
+		client.SetState(ClientWaitGet)
 		return nil, err
 	}
 

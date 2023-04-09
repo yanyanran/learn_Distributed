@@ -104,7 +104,7 @@ func (c *Channel) pushInFlightMessage(msg *Message) {
 func (c *Channel) popInFlightMessage(uuidStr string) (*Message, error) {
 	msg, ok := c.inFlightMessages[uuidStr]
 	if !ok {
-		return nil, errors.New("UUID not in flight")
+		return nil, errors.New("UUID not in flight") // ERROR
 	}
 	delete(c.inFlightMessages, uuidStr)
 	msg.EndTimer()
@@ -177,7 +177,7 @@ func (c *Channel) Router() {
 				if err != nil {
 					log.Printf("ERROR: t.backend.Put() - %s", err.Error())
 				}
-				log.Printf("TOPIC(%s): wrote to backend", c.name)
+				log.Printf("CHANNEL(%s): wrote to backend", c.name)
 			}
 		case closeReq := <-c.exitChan:
 			log.Printf("CHANNEL(%s) is closing", c.name)
@@ -228,7 +228,8 @@ func (c *Channel) RequeueRouter(closeChan chan struct{}) {
 				select {
 				case <-time.After(60 * time.Second):
 					log.Printf("CHANNEL(%s): auto requeue of message(%s)", c.name, util.UuidToStr(msg.Uuid()))
-				case <-msg.timerChan:
+				case <-msg.timerChan: // pop后结束
+					log.Println("timerChan exit.......")
 					return
 				}
 				err := c.RequeueMessage(util.UuidToStr(msg.Uuid()))
@@ -255,7 +256,7 @@ func (c *Channel) RequeueRouter(closeChan chan struct{}) {
 		case finishReq := <-c.finishMessageChan:
 			uuidStr := finishReq.Variable.(string)
 			_, err := c.popInFlightMessage(uuidStr)
-			if err != nil {
+			if err != nil { // ERROR
 				log.Printf("ERROR: failed to finish message(%s) - %s", uuidStr, err.Error())
 			}
 			finishReq.RetChan <- err

@@ -20,7 +20,11 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("%s - %s", util.UuidToStr(msg.Uuid()), msg.Body())
-		consumeClient.WriteCommand(consumeClient.Finish(util.UuidToStr(msg.Uuid())))
+		log.Printf("%s - %s", util.UuidToStr(msg.Uuid()), msg.Body()) // TODO: BUG
+		err = consumeClient.WriteCommand(consumeClient.Finish(util.UuidToStr(msg.Uuid())))
+		if err != nil {
+			log.Println("[ERROR]consumer write command error!!!!")
+			log.Fatal(err)
+		}
 	}
 }

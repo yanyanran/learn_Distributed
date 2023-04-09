@@ -191,7 +191,7 @@ func (d *DiskQueue) writeOne(msg []byte) (err error) {
 	}
 
 	dataLen := len(msg)
-	err = binary.Write(&buf, binary.BigEndian, dataLen)
+	err = binary.Write(&buf, binary.BigEndian, int32(dataLen))
 	if err != nil {
 		return
 	}
