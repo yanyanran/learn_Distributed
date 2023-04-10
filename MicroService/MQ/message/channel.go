@@ -251,6 +251,7 @@ func (c *Channel) RequeueRouter(closeChan chan struct{}) {
 				}(msg)
 			}
 			requeueReq.RetChan <- err
+			log.Printf("REQUEUE: %s is success requeue", uuidStr)
 
 		// 消息已完成
 		case finishReq := <-c.finishMessageChan:
@@ -260,6 +261,7 @@ func (c *Channel) RequeueRouter(closeChan chan struct{}) {
 				log.Printf("ERROR: failed to finish message(%s) - %s", uuidStr, err.Error())
 			}
 			finishReq.RetChan <- err
+			log.Printf("FINISH: %s is success finish", uuidStr)
 
 		case <-closeChan:
 			return

@@ -109,9 +109,10 @@ func (t *Topic) MessagePump(closeChan <-chan struct{}) {
 		t.readSyncChan <- struct{}{} // 读管道阻塞-> 加锁
 
 		for _, channel := range t.channelMap {
-			go func(ch *Channel) {
-				ch.PutMessage(msg) // 消息推送给channel考虑原子问题(map并发读写错误)
-			}(channel)
+			// 指定msg防止管道新消息抢占
+			go func(ch *Channel, m *Message) {
+				ch.PutMessage(m) // 消息推送给channel考虑原子问题(map并发读写错误)
+			}(channel, msg)
 		}
 
 		t.routerSyncChan <- struct{}{} // 数据到来-> 解锁
