@@ -1,6 +1,9 @@
 package message
 
-import "log"
+import (
+	"MQ/util"
+	"log"
+)
 
 type Message struct {
 	data      []byte
@@ -10,7 +13,7 @@ type Message struct {
 func NewMessage(data []byte) *Message {
 	return &Message{
 		data:      data,
-		timerChan: make(chan struct{}),
+		timerChan: make(chan struct{}, 1),
 	}
 }
 
@@ -30,6 +33,6 @@ func (m *Message) EndTimer() {
 	select {
 	case m.timerChan <- struct{}{}: // 触发RequeueRouter中的msg.timerChan导致return
 	default:
-		log.Println("cannot write a struct into timerChan")
+		log.Printf("(%s)cannot write a struct into timerChan", util.UuidToStr(m.Uuid()))
 	}
 }

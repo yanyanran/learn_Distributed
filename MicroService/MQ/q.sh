@@ -1,1 +1,1 @@
-sh mq.sh & sh mq.sh
+bash mq.sh & bash mq.sh & bash mq.sh

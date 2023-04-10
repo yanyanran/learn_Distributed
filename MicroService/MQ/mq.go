@@ -6,6 +6,7 @@ import (
 	"MQ/util"
 	"context"
 	"flag"
+	"log"
 	"os"
 	"os/signal"
 	"strconv"
@@ -18,6 +19,21 @@ var bindAddress = flag.String("address", "", "address to bind to")
 var webPort = flag.Int("web-port", 5150, "port to listen on for HTTP connections")
 var tcpPort = flag.Int("tcp-port", 5151, "port to listen on for TCP connections")
 var memQueueSize = flag.Int("mem-queue-size", 10000, "number of messages to keep in memory (per topic)")
+
+var (
+	Info  *log.Logger
+	Error *log.Logger
+)
+
+func init() {
+	// 日志输出文件
+	file, err := os.OpenFile("sys.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalln("Faild to open error logger file:", err)
+	}
+	// 自定义日志格式
+	log.SetOutput(file)
+}
 
 func main() {
 	flag.Parse() // 解析命令行参数

@@ -147,7 +147,7 @@ func (c *Channel) Router() {
 		case clientReq = <-c.addClientChan: // add consumer
 			client := clientReq.Variable.(Consumer)
 			c.clients = append(c.clients, client)
-			log.Printf("CHANNEL(%s) added client %#v", c.name, client)
+			log.Printf("CHANNEL(%s) added client success : %#v", c.name, client)
 			clientReq.RetChan <- struct{}{}
 
 		case clientReq = <-c.removeClientChan: // remove consumer
@@ -226,10 +226,10 @@ func (c *Channel) RequeueRouter(closeChan chan struct{}) {
 			// 防止provider长时间不确认消息发送完成，消息堆积在inFightMessages
 			go func(msg *Message) {
 				select {
-				case <-time.After(60 * time.Second):
+				case <-time.After(30 * time.Second):
 					log.Printf("CHANNEL(%s): auto requeue of message(%s)", c.name, util.UuidToStr(msg.Uuid()))
 				case <-msg.timerChan: // pop后结束
-					log.Println("timerChan exit.......")
+					log.Printf("msg（%s）'s timerChan is exited.......", msg.Uuid())
 					return
 				}
 				err := c.RequeueMessage(util.UuidToStr(msg.Uuid()))
@@ -247,11 +247,11 @@ func (c *Channel) RequeueRouter(closeChan chan struct{}) {
 				log.Printf("ERROR: failed to requeue message(%s) - %s", uuidStr, err.Error())
 			} else {
 				go func(msg *Message) {
+					log.Printf("REQUEUE goruntine: %s is success requeue", uuidStr)
 					c.PutMessage(msg)
 				}(msg)
 			}
 			requeueReq.RetChan <- err
-			log.Printf("REQUEUE: %s is success requeue", uuidStr)
 
 		// 消息已完成
 		case finishReq := <-c.finishMessageChan:
