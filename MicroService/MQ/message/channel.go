@@ -179,7 +179,7 @@ func (c *Channel) Router() {
 				}
 				log.Printf("CHANNEL(%s): wrote to backend", c.name)
 			}
-		case closeReq := <-c.exitChan:
+		case closeReq := <-c.exitChan: // server退出触发
 			log.Printf("CHANNEL(%s) is closing", c.name)
 			close(closeChan)
 

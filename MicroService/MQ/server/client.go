@@ -24,6 +24,10 @@ func (c *Client) String() string {
 	return c.name
 }
 
+func (c *Client) GetName() string {
+	return c.name
+}
+
 func (c *Client) GetState() int {
 	return c.state
 }
