@@ -1,23 +1,38 @@
 package transport
 
 import (
-	"MyRPC/MicroService/go-kit/baseUse/end_point"
-	"MyRPC/MicroService/go-kit/baseUse/service"
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/go-kit/kit/endpoint"
 	httpTransport "github.com/go-kit/kit/transport/http"
+	uuid "github.com/satori/go.uuid"
+	"go-kit/baseUse/end_point"
+	"go-kit/baseUse/service"
+	"go-kit/baseUse/utils"
+	"go.uber.org/zap"
 	"net/http"
 	"strconv"
 )
 
-func NewHttpHandler(endpoint end_point.EndPointServer) http.Handler {
+func NewHttpHandler(endpoint end_point.EndPointServer, log *zap.Logger) http.Handler {
 	options := []httpTransport.ServerOption{
-		httpTransport.ServerErrorEncoder(errorEncoder), // 报错走这
+		httpTransport.ServerErrorEncoder(func(ctx context.Context, err error, w http.ResponseWriter) {
+			log.Warn(fmt.Sprint(ctx.Value(service.ContextReqUUid)), zap.Error(err))
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(errorWrapper{Error: err.Error()})
+		}), // 报错走这
+		//httptransport.ServerErrorHandler(NewZapLogErrorHandler(log)),
+		httpTransport.ServerBefore(func(ctx context.Context, request *http.Request) context.Context {
+			UUID := uuid.NewV5(uuid.NewV4(), "req_uuid").String()
+			log.Debug("给请求添加uuid", zap.Any("UUID", UUID))
+			ctx = context.WithValue(ctx, service.ContextReqUUid, UUID)
+			return ctx
+		}),
 	}
+
 	m := http.NewServeMux()
-	m.Handle("/sum/", httpTransport.NewServer(
+	// Handle-> 完成pattern和server的映射
+	m.Handle("/sum/", httpTransport.NewServer( // server注册
 		endpoint.AddEndPoint,
 		decodeHTTPADDRequest,      //解析请求值
 		encodeHTTPGenericResponse, //返回值
@@ -26,7 +41,7 @@ func NewHttpHandler(endpoint end_point.EndPointServer) http.Handler {
 	return m
 }
 
-func decodeHTTPADDRequest(_ context.Context, r *http.Request) (interface{}, error) {
+func decodeHTTPADDRequest(ctx context.Context, r *http.Request) (interface{}, error) {
 	var (
 		in  service.Add
 		err error
@@ -36,23 +51,25 @@ func decodeHTTPADDRequest(_ context.Context, r *http.Request) (interface{}, erro
 	if err != nil {
 		return in, err
 	}
+	utils.GetLogger().Debug(fmt.Sprint(ctx.Value(service.ContextReqUUid)), zap.Any(" 开始解析请求数据", in))
 	return in, nil
 }
 
 func encodeHTTPGenericResponse(ctx context.Context, w http.ResponseWriter, response interface{}) error {
-	if f, ok := response.(endpoint.Failer); ok && f.Failed() != nil {
+	/*	if f, ok := response.(endpoint.Failer); ok && f.Failed() != nil {
 		errorEncoder(ctx, f.Failed(), w)
 		return nil
-	}
+	}*/
+	utils.GetLogger().Debug(fmt.Sprint(ctx.Value(service.ContextReqUUid)), zap.Any("请求结束封装返回值", response))
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	return json.NewEncoder(w).Encode(response)
 }
 
-func errorEncoder(_ context.Context, err error, w http.ResponseWriter) {
+/*func errorEncoder(_ context.Context, err error, w http.ResponseWriter) {
 	fmt.Println("errorEncoder", err.Error())
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(errorWrapper{Error: err.Error()})
-}
+}*/
 
 type errorWrapper struct {
 	Error string `json:"errors"`

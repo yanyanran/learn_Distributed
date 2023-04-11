@@ -1,17 +1,19 @@
 package main
 
 import (
-	"MyRPC/MicroService/go-kit/baseUse/end_point"
-	"MyRPC/MicroService/go-kit/baseUse/service"
-	"MyRPC/MicroService/go-kit/baseUse/transport"
 	"fmt"
+	"go-kit/baseUse/end_point"
+	"go-kit/baseUse/service"
+	"go-kit/baseUse/transport"
+	"go-kit/baseUse/utils"
 	"net/http"
 )
 
 func main() {
-	server := service.NewService()
-	endpoints := end_point.NewEndPointServer(server)
-	httpHandler := transport.NewHttpHandler(endpoints)
-	fmt.Println("server run 0.0.0.0:8888")
-	_ = http.ListenAndServe("0.0.0.0:8888", httpHandler)
+	utils.NewLoggerServer()
+	server := service.NewService(utils.GetLogger())
+	endpoints := end_point.NewEndPointServer(server, utils.GetLogger())
+	httpHandler := transport.NewHttpHandler(endpoints, utils.GetLogger())
+	fmt.Println("server run 172.0.0.1:8888")
+	_ = http.ListenAndServe("127.0.0.1:8888", httpHandler)
 }

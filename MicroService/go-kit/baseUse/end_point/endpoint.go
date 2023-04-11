@@ -1,9 +1,10 @@
 package end_point
 
 import (
-	"MyRPC/MicroService/go-kit/baseUse/service"
 	"context"
 	"github.com/go-kit/kit/endpoint"
+	"go-kit/baseUse/service"
+	"go.uber.org/zap"
 )
 
 // EndPointServer endpoint方法集合
@@ -11,10 +12,12 @@ type EndPointServer struct {
 	AddEndPoint endpoint.Endpoint
 }
 
-func NewEndPointServer(s service.Service) EndPointServer {
+func NewEndPointServer(s service.Service, log *zap.Logger) EndPointServer {
 	var addEndPoint endpoint.Endpoint
 	{
 		addEndPoint = MakeAddEndPoint(s)
+		// 为每个Endpoint添加日志中间件
+		addEndPoint = LoggingMiddleware(log)(addEndPoint)
 	}
 	return EndPointServer{AddEndPoint: addEndPoint}
 }
