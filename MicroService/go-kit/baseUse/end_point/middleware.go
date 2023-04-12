@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+// endpoint层添加日志中间件
+
 func LoggingMiddleware(logger *zap.Logger) endpoint.Middleware {
 	return func(next endpoint.Endpoint) endpoint.Endpoint {
 		return func(ctx context.Context, request interface{}) (response interface{}, err error) {

@@ -1,0 +1,22 @@
+{"L":"DEBUG","T":"2023-04-12 09:48:07","C":"transport/transport.go:29","M":"给请求添加uuid","UUID":"73119979-f1a6-5982-89b7-9d3ad25a9e3d"}
+{"L":"DEBUG","T":"2023-04-12 09:48:07","C":"transport/transport.go:56","M":"73119979-f1a6-5982-89b7-9d3ad25a9e3d"," 开始解析请求数据":{"a":1,"b":2}}
+{"L":"DEBUG","T":"2023-04-12 09:48:07","C":"service/middleware.go:32","M":"73119979-f1a6-5982-89b7-9d3ad25a9e3d","调用 service logMiddlewareServer":"TestAdd","req":{"a":1,"b":2},"res":{"res":3}}
+{"L":"DEBUG","T":"2023-04-12 09:48:07","C":"end_point/middleware.go:18","M":"73119979-f1a6-5982-89b7-9d3ad25a9e3d","调用 endpoint LoggingMiddleware":"处理完请求","耗时毫秒":0}
+{"L":"DEBUG","T":"2023-04-12 09:48:07","C":"transport/transport.go:65","M":"73119979-f1a6-5982-89b7-9d3ad25a9e3d","请求结束封装返回值":{"res":3}}
+{"L":"DEBUG","T":"2023-04-12 09:50:54","C":"transport/transport.go:29","M":"给请求添加uuid","UUID":"5be8a513-c74d-5e9b-89c9-04483c866924"}
+{"L":"DEBUG","T":"2023-04-12 09:50:54","C":"transport/transport.go:56","M":"5be8a513-c74d-5e9b-89c9-04483c866924"," 开始解析请求数据":{"a":1,"b":2}}
+{"L":"DEBUG","T":"2023-04-12 09:50:54","C":"service/middleware.go:32","M":"5be8a513-c74d-5e9b-89c9-04483c866924","调用 service logMiddlewareServer":"TestAdd","req":{"a":1,"b":2},"res":{"res":3}}
+{"L":"DEBUG","T":"2023-04-12 09:50:54","C":"end_point/middleware.go:18","M":"5be8a513-c74d-5e9b-89c9-04483c866924","调用 endpoint LoggingMiddleware":"处理完请求","耗时毫秒":0}
+{"L":"DEBUG","T":"2023-04-12 09:50:54","C":"transport/transport.go:65","M":"5be8a513-c74d-5e9b-89c9-04483c866924","请求结束封装返回值":{"res":3}}
+{"L":"DEBUG","T":"2023-04-12 09:50:58","C":"transport/transport.go:29","M":"给请求添加uuid","UUID":"b2b400e0-9e7b-5f24-8738-866fa85784a0"}
+{"L":"DEBUG","T":"2023-04-12 09:50:58","C":"transport/transport.go:56","M":"b2b400e0-9e7b-5f24-8738-866fa85784a0"," 开始解析请求数据":{"a":1,"b":2}}
+{"L":"DEBUG","T":"2023-04-12 09:50:58","C":"service/middleware.go:32","M":"b2b400e0-9e7b-5f24-8738-866fa85784a0","调用 service logMiddlewareServer":"TestAdd","req":{"a":1,"b":2},"res":{"res":3}}
+{"L":"DEBUG","T":"2023-04-12 09:50:58","C":"end_point/middleware.go:18","M":"b2b400e0-9e7b-5f24-8738-866fa85784a0","调用 endpoint LoggingMiddleware":"处理完请求","耗时毫秒":0}
+{"L":"DEBUG","T":"2023-04-12 09:50:58","C":"transport/transport.go:65","M":"b2b400e0-9e7b-5f24-8738-866fa85784a0","请求结束封装返回值":{"res":3}}
+{"L":"DEBUG","T":"2023-04-12 09:51:47","C":"transport/transport.go:29","M":"给请求添加uuid","UUID":"a493dc8a-77b0-5c47-8980-43d4e2b84fea"}
+{"L":"DEBUG","T":"2023-04-12 09:51:47","C":"transport/transport.go:56","M":"a493dc8a-77b0-5c47-8980-43d4e2b84fea"," 开始解析请求数据":{"a":1,"b":2}}
+{"L":"DEBUG","T":"2023-04-12 09:51:47","C":"service/service.go:31","M":"a493dc8a-77b0-5c47-8980-43d4e2b84fea","调用 service Service":"TestAdd 处理请求"}
+{"L":"DEBUG","T":"2023-04-12 09:51:47","C":"service/service.go:33","M":"a493dc8a-77b0-5c47-8980-43d4e2b84fea","调用 service Service":"TestAdd 处理请求","处理返回值":{"res":3}}
+{"L":"DEBUG","T":"2023-04-12 09:51:47","C":"service/middleware.go:32","M":"a493dc8a-77b0-5c47-8980-43d4e2b84fea","调用 service logMiddlewareServer":"TestAdd","req":{"a":1,"b":2},"res":{"res":3}}
+{"L":"DEBUG","T":"2023-04-12 09:51:47","C":"end_point/middleware.go:18","M":"a493dc8a-77b0-5c47-8980-43d4e2b84fea","调用 endpoint LoggingMiddleware":"处理完请求","耗时毫秒":2}
+{"L":"DEBUG","T":"2023-04-12 09:51:47","C":"transport/transport.go:65","M":"a493dc8a-77b0-5c47-8980-43d4e2b84fea","请求结束封装返回值":{"res":3}}

@@ -1,0 +1,3 @@
+{"L":"INFO","T":"2023-04-12 09:48:03","C":"logtol/log.go:101","M":"[NewLogger] success"}
+{"L":"INFO","T":"2023-04-12 09:50:50","C":"logtol/log.go:101","M":"[NewLogger] success"}
+{"L":"INFO","T":"2023-04-12 09:51:46","C":"logtol/log.go:101","M":"[NewLogger] success"}

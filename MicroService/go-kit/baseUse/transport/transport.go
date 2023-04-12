@@ -22,6 +22,8 @@ func NewHttpHandler(endpoint end_point.EndPointServer, log *zap.Logger) http.Han
 			json.NewEncoder(w).Encode(errorWrapper{Error: err.Error()})
 		}), // 报错走这
 		//httptransport.ServerErrorHandler(NewZapLogErrorHandler(log)),
+
+		// 为每个请求添加uuid
 		httpTransport.ServerBefore(func(ctx context.Context, request *http.Request) context.Context {
 			UUID := uuid.NewV5(uuid.NewV4(), "req_uuid").String()
 			log.Debug("给请求添加uuid", zap.Any("UUID", UUID))
@@ -31,7 +33,7 @@ func NewHttpHandler(endpoint end_point.EndPointServer, log *zap.Logger) http.Han
 	}
 
 	m := http.NewServeMux()
-	// Handle-> 完成pattern和server的映射
+	// Handle-> 完成mode和server的映射
 	m.Handle("/sum/", httpTransport.NewServer( // server注册
 		endpoint.AddEndPoint,
 		decodeHTTPADDRequest,      //解析请求值

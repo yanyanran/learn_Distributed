@@ -1,11 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"go-kit/baseUse/end_point"
 	"go-kit/baseUse/service"
 	"go-kit/baseUse/transport"
 	"go-kit/baseUse/utils"
+	"log"
 	"net/http"
 )
 
@@ -14,6 +14,6 @@ func main() {
 	server := service.NewService(utils.GetLogger())
 	endpoints := end_point.NewEndPointServer(server, utils.GetLogger())
 	httpHandler := transport.NewHttpHandler(endpoints, utils.GetLogger())
-	fmt.Println("server run 172.0.0.1:8888")
+	log.Printf("server run 172.0.0.1:8888")
 	_ = http.ListenAndServe("127.0.0.1:8888", httpHandler)
 }
