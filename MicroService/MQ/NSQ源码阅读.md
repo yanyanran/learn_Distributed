@@ -253,9 +253,155 @@ HTTP和TCP接收消息的本质都差不多，都是先**获取/创建一个topi
 
 
 
+#### nsqd发送消息
+
+nsqd往客户端发消息主要走的是**tcp连接**，启动了一个tcp listener并连接后，通过tcp Handle调IOLoop去轮询读消息处理消息
+
+而IOLoop内又存在两个工作协程：**Exec**和**MsgPump**，它俩之间通过多个事件Chan去同步信息。
+
+其中Exec主要是通过解析tcp命令获取操作参数（PUB、RDY这些）然后执行相对应的方法*[写管道触发msgPump]*，MsgPump则无限for去监听多个事件管道进行处理。
 
 
 
+ 其中对bakendMsgChan和memoryMsgChan两个管道的读写操作就是nsqd往客户端发送消息的行为：
+
+```go
+func (p *protocolV2) messagePump(client *clientV2, startedChan chan bool) {
+    
+    // .....(pump的初始化
+
+	for {
+		if subChannel == nil || !client.IsReadyForMessages() {
+			// 客户端还没准备好接收数据
+			memoryMsgChan = nil
+			backendMsgChan = nil
+			flusherChan = nil
+			// force flush
+			// 强制刷新一次，将client中Inflight的消息发出去
+			client.writeLock.Lock()
+			err = client.Flush()
+			client.writeLock.Unlock()
+			if err != nil {
+				goto exit
+			}
+			flushed = true
+		} else if flushed {
+			// 将memoryMsgChan, backendMsgChan设置为我们订阅的channel所属的memoryMsgChan和backend
+			memoryMsgChan = subChannel.memoryMsgChan
+			backendMsgChan = subChannel.backend.ReadChan()
+			flusherChan = nil
+		} else {
+			// buffer中有数据了，设置flusherChan， 保证在OutputBufferTimeout之后可以将消息发送出去
+			memoryMsgChan = subChannel.memoryMsgChan
+			backendMsgChan = subChannel.backend.ReadChan()
+			flusherChan = outputBufferTicker.C
+		}
+
+		select {
+		// OutputBufferTimeout时间到，刷新缓冲区，将消息发送出去
+		case <-flusherChan:
+			client.writeLock.Lock()
+			err = client.Flush()
+			client.writeLock.Unlock()
+			if err != nil {
+				goto exit
+			}
+			flushed = true
+		case <-client.ReadyStateChan:
+		case subChannel = <-subEventChan:
+			// you can't SUB anymore
+			// 订阅channel(EXEC(SUB))和更新RDY值时（EXEC(RDY)）时
+			// 会往subEventChan和client.ReadyStateChan中发送消息。
+			// messagePump如果接收从这两个golang channel中接收到消息，
+			// 则不可以再订阅nsq channel
+			subEventChan = nil
+		case identifyData := <-identifyEventChan:
+			// 同样的，首次连接时执行EXEC(IDENTIRY)
+			// 会将客户端的配置通知到identifyEventChan。
+			// messagePump接收到后，根据客户端的配置调整心跳频率等。
+			// 之后再发送IDENTIFY，messagePump接收不到
+			identifyEventChan = nil
+
+			// 如下，根据客户端配置，调整不同的参数
+			outputBufferTicker.Stop()
+			if identifyData.OutputBufferTimeout > 0 {
+				outputBufferTicker = time.NewTicker(identifyData.OutputBufferTimeout)
+			}
+
+			heartbeatTicker.Stop()
+			heartbeatChan = nil
+			if identifyData.HeartbeatInterval > 0 {
+				heartbeatTicker = time.NewTicker(identifyData.HeartbeatInterval)
+				heartbeatChan = heartbeatTicker.C
+			}
+
+			if identifyData.SampleRate > 0 {
+				sampleRate = identifyData.SampleRate
+			}
+
+			msgTimeout = identifyData.MsgTimeout
+		case <-heartbeatChan:
+			// 每隔HeartbeatInterval发送一次心跳包
+			err = p.Send(client, frameTypeResponse, heartbeatBytes)
+			if err != nil {
+				goto exit
+			}
+		case b := <-backendMsgChan:
+			// 如果backend中有数据，channel会将backend的消息从文件中读出，
+			// 发送到golang channel，推送至客户端
+			if sampleRate > 0 && rand.Int31n(100) > sampleRate {
+				continue
+			}
+
+			msg, err := decodeMessage(b)
+			if err != nil {
+				p.nsqd.logf(LOG_ERROR, "failed to decode message - %s", err)
+				continue
+			}
+			// 每投递一次消息，则记录一次，超过一定次数就丢弃
+			msg.Attempts++
+
+			// 将消息移到InFlight队列，同时记录该消息在InFlight中的超时时间
+			subChannel.StartInFlightTimeout(msg, client.ID, msgTimeout)
+			// 增加客户端的InFlightCount和MessageCount
+			client.SendingMessage()
+			// 将消息写入buffer中
+			err = p.SendMessage(client, msg)
+			if err != nil {
+				goto exit
+			}
+			// 由于buffer中有数据了，将flushed设置为false，可以打开flusherChan
+			// 以便触发client.Flush()将消息发出去
+			flushed = false
+		case msg := <-memoryMsgChan:
+			// 获取memoryMsgChan中的消息与获取backendMsgChan中的基本一致
+			if sampleRate > 0 && rand.Int31n(100) > sampleRate {
+				continue
+			}
+			msg.Attempts++
+
+			subChannel.StartInFlightTimeout(msg, client.ID, msgTimeout)
+			client.SendingMessage()
+			err = p.SendMessage(client, msg)
+			if err != nil {
+				goto exit
+			}
+			flushed = false
+		case <-client.ExitChan:
+			// 接收到exit消息 则退出for
+			goto exit
+		}
+	}
+
+exit:
+	p.nsqd.logf(LOG_INFO, "PROTOCOL(V2): [%s] exiting messagePump", client)
+	heartbeatTicker.Stop()
+	outputBufferTicker.Stop()
+	if err != nil {
+		p.nsqd.logf(LOG_ERROR, "PROTOCOL(V2): [%s] messagePump error - %s", client, err)
+	}
+}
+```
 
 ------
 
