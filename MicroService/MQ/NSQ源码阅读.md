@@ -263,7 +263,35 @@ nsqd往客户端发消息主要走的是**tcp连接**，启动了一个tcp liste
 
 
 
- 其中对bakendMsgChan和memoryMsgChan两个管道的读写操作就是nsqd往客户端发送消息的行为：
+##### protocol.msgPump设计
+
+msgPump的设计很有意思，有很多很巧妙的的地方。
+
+可以看到在进入for循环之后，在select之前会有三个分支判断。这三个分支主要是对变量**flushed**做改变。flushed初始化为ture，并且在强制flush和正常flush后也**置为true**。
+
+诸多管道操作中，对bakendMsgChan和memoryMsgChan两个管道的操作就是nsqd往远端客户端推送消息的部分，我们发现在这两个管道操作执行之后会将flushed值**置为false**。
+
+> 可以看出flushed含义在于：
+>
+> 当数据已经flush完毕时，**变成*true*表示当前没数据要推送**
+>
+> 当有数据到来需要推送到远端时，**变为*false*表示有数据需要推送**
+
+
+
+然后回到刚刚所说的select前的三个分支：
+
+> 1-> 此时客户端还没有准备好接收数据，此时只需要将sever维护的client的infight中存留的消息flush出去就好。因为客户端没有准备好接收数据，所以此时不需要绑定任何消息管道和推送管道。然后到select中被触发任何一个管道后重新加载客户端的接收状态；
+>
+> 2-> 此时的flushed为true，说明客户端已经准备好接收并且此时的消息已经发送完毕，在有新消息到来之前不需要flush。所以之绑定了两个消息到来管道，flusherChan设为nil；
+>
+> 3-> 到了这个分支就说明客户端已经准备好接收并且此时有消息需要向远端flush，所以不仅绑定了两个消息到来管道，还设置了nsqd的推送远端消息管道flusherChan为一个**定期往客户端flush消息的管道**。
+
+
+
+这种设计相当于保证：**只有在有数据需要推送到远端时才去flush**，很节省资源。
+
+源码如下：
 
 ```go
 func (p *protocolV2) messagePump(client *clientV2, startedChan chan bool) {
@@ -271,13 +299,11 @@ func (p *protocolV2) messagePump(client *clientV2, startedChan chan bool) {
     // .....(pump的初始化
 
 	for {
-		if subChannel == nil || !client.IsReadyForMessages() {
-			// 客户端还没准备好接收数据
+		if subChannel == nil || !client.IsReadyForMessages() {  // 1、客户端还没准备好接收数据
 			memoryMsgChan = nil
 			backendMsgChan = nil
 			flusherChan = nil
-			// force flush
-			// 强制刷新一次，将client中Inflight的消息发出去
+			// 强制刷新一次，将client中Inflight存留的消息发出去
 			client.writeLock.Lock()
 			err = client.Flush()
 			client.writeLock.Unlock()
@@ -285,21 +311,18 @@ func (p *protocolV2) messagePump(client *clientV2, startedChan chan bool) {
 				goto exit
 			}
 			flushed = true
-		} else if flushed {
-			// 将memoryMsgChan, backendMsgChan设置为我们订阅的channel所属的memoryMsgChan和backend
+		} else if flushed {   // 2、flushed = true 设置订阅channel所属的memoryMsgChan和backend
 			memoryMsgChan = subChannel.memoryMsgChan
 			backendMsgChan = subChannel.backend.ReadChan()
 			flusherChan = nil
-		} else {
-			// buffer中有数据了，设置flusherChan， 保证在OutputBufferTimeout之后可以将消息发送出去
+		} else {  // 3、buffer中有数据了，设置flusherChan， 保证在OutputBufferTimeout之后可以将消息发送出去
 			memoryMsgChan = subChannel.memoryMsgChan
 			backendMsgChan = subChannel.backend.ReadChan()
-			flusherChan = outputBufferTicker.C
+			flusherChan = outputBufferTicker.C   // 定期往客户端flush
 		}
 
 		select {
-		// OutputBufferTimeout时间到，刷新缓冲区，将消息发送出去
-		case <-flusherChan:
+		case <-flusherChan: 	// OutputBufferTimeout时间到，刷新缓冲区，将消息发送出去
 			client.writeLock.Lock()
 			err = client.Flush()
 			client.writeLock.Unlock()
@@ -307,22 +330,15 @@ func (p *protocolV2) messagePump(client *clientV2, startedChan chan bool) {
 				goto exit
 			}
 			flushed = true
-		case <-client.ReadyStateChan:
-		case subChannel = <-subEventChan:
-			// you can't SUB anymore
-			// 订阅channel(EXEC(SUB))和更新RDY值时（EXEC(RDY)）时
-			// 会往subEventChan和client.ReadyStateChan中发送消息。
-			// messagePump如果接收从这两个golang channel中接收到消息，
-			// 则不可以再订阅nsq channel
+		case <-client.ReadyStateChan:    // 客户端状态改变，重新判断客户端接收状态
+		case subChannel = <-subEventChan:   // 一个客户端只能订阅一个channel
 			subEventChan = nil
 		case identifyData := <-identifyEventChan:
-			// 同样的，首次连接时执行EXEC(IDENTIRY)
-			// 会将客户端的配置通知到identifyEventChan。
-			// messagePump接收到后，根据客户端的配置调整心跳频率等。
-			// 之后再发送IDENTIFY，messagePump接收不到
+			// 首次连接时执行EXEC(IDENTIRY)会将客户端的配置通知到identifyEventChan
+			// messagePump收到后，根据客户端的配置调整心跳频率等【之后再发送IDENTIFY，messagePump接收不到】
 			identifyEventChan = nil
 
-			// 如下，根据客户端配置，调整不同的参数
+			// 根据客户端配置，调整不同的参数
 			outputBufferTicker.Stop()
 			if identifyData.OutputBufferTimeout > 0 {
 				outputBufferTicker = time.NewTicker(identifyData.OutputBufferTimeout)
@@ -340,15 +356,13 @@ func (p *protocolV2) messagePump(client *clientV2, startedChan chan bool) {
 			}
 
 			msgTimeout = identifyData.MsgTimeout
-		case <-heartbeatChan:
-			// 每隔HeartbeatInterval发送一次心跳包
+		case <-heartbeatChan:    // 每隔HeartbeatInterval发送一次心跳包 
 			err = p.Send(client, frameTypeResponse, heartbeatBytes)
 			if err != nil {
 				goto exit
 			}
 		case b := <-backendMsgChan:
-			// 如果backend中有数据，channel会将backend的消息从文件中读出，
-			// 发送到golang channel，推送至客户端
+			// 如果backend中有数据，channel会将backend的消息从文件中读出，发送到channel，推送至客户端
 			if sampleRate > 0 && rand.Int31n(100) > sampleRate {
 				continue
 			}
@@ -374,7 +388,6 @@ func (p *protocolV2) messagePump(client *clientV2, startedChan chan bool) {
 			// 以便触发client.Flush()将消息发出去
 			flushed = false
 		case msg := <-memoryMsgChan:
-			// 获取memoryMsgChan中的消息与获取backendMsgChan中的基本一致
 			if sampleRate > 0 && rand.Int31n(100) > sampleRate {
 				continue
 			}
@@ -388,7 +401,6 @@ func (p *protocolV2) messagePump(client *clientV2, startedChan chan bool) {
 			}
 			flushed = false
 		case <-client.ExitChan:
-			// 接收到exit消息 则退出for
 			goto exit
 		}
 	}
@@ -402,6 +414,14 @@ exit:
 	}
 }
 ```
+
+
+
+
+
+
+
+
 
 ------
 
