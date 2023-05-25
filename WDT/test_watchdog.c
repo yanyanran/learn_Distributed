@@ -7,7 +7,7 @@ int main(void)
     {
         // 模拟长时间运行的任务
         printf("Watchdog demo - Task is running...\n");
-        sleep(10); // 每10s执行一次
+        sleep(10);
     }
 
     return 0;
